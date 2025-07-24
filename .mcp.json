@@ -1,0 +1,19 @@
+{
+  "mcpServers": {
+    "memory": {
+      "command": "docker",
+      "args": [
+        "run",
+        "-i",
+        "-v",
+        "claude-memory:/app/dict",
+        "--rm",
+        "mcp/memory"
+      ]
+    },
+    "think": {
+      "command": "docker",
+      "args": ["run", "-i", "--rm", "mcp/sequentialthinking"]
+    }
+  }
+}
