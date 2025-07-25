@@ -1,6 +1,6 @@
 from dataclasses import dataclass
-from typing import List, Optional, Dict
 from enum import Enum
+from typing import Dict, List, Optional
 
 
 class ExecutionStatus(Enum):
@@ -47,23 +47,29 @@ class ExecutionRequest:
 
 class LanguageRuntime:
     """基础运行时接口"""
-    
+
     def __init__(self, name: str):
         self.name = name
-    
-    def execute(self, code: str, timeout: int, memory_limit: int, 
-                input_data: str = "", env_vars: Dict[str, str] = None) -> ExecutionResult:
+
+    def execute(
+        self,
+        code: str,
+        timeout: int,
+        memory_limit: int,
+        input_data: str = "",
+        env_vars: Dict[str, str] = None,
+    ) -> ExecutionResult:
         """执行代码并返回结果"""
         raise NotImplementedError
-    
+
     def get_supported_extensions(self) -> List[str]:
         """获取支持的文件扩展名"""
         raise NotImplementedError
-    
+
     def get_resource_limits(self) -> ResourceLimits:
         """获取运行时资源限制"""
         return ResourceLimits()
-    
+
     def get_default_filename(self) -> str:
         """获取默认文件名"""
         raise NotImplementedError

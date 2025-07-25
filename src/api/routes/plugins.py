@@ -2,7 +2,6 @@ from fastapi import APIRouter, HTTPException
 from typing import Dict, Any
 
 from ...runtime.plugins.manager import plugin_manager
-from ...runtime.plugins.base import LibraryHandler
 
 router = APIRouter(prefix="/api/v1", tags=["plugins"])
 

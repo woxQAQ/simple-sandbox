@@ -1,4 +1,6 @@
+import logging
 import os
+import resource
 import signal
 import subprocess
 import tempfile
@@ -6,8 +8,6 @@ import threading
 import time
 from pathlib import Path
 from typing import Dict, List
-import resource
-import logging
 
 from .models import ExecutionResult, ExecutionStatus
 
@@ -22,8 +22,14 @@ class ProcessManager:
         self.work_dir.mkdir(parents=True, exist_ok=True)
         self.active_processes: Dict[int, subprocess.Popen] = {}
 
-    def execute_process(self, command: List[str], timeout: int, memory_limit: int,
-                       stdin_data: str = "", env_vars: Dict[str, str] = None) -> ExecutionResult:
+    def execute_process(
+        self,
+        command: List[str],
+        timeout: int,
+        memory_limit: int,
+        stdin_data: str = "",
+        env_vars: Dict[str, str] | None = None,
+    ) -> ExecutionResult:
         """执行外部进程并管理资源"""
 
         # 创建临时工作目录
@@ -39,8 +45,10 @@ class ProcessManager:
             def preexec_fn():
                 try:
                     # 设置内存限制
-                    resource.setrlimit(resource.RLIMIT_AS,
-                                     (memory_limit * 1024 * 1024, memory_limit * 1024 * 1024))
+                    resource.setrlimit(
+                        resource.RLIMIT_AS,
+                        (memory_limit * 1024 * 1024, memory_limit * 1024 * 1024),
+                    )
 
                     # 设置CPU时间限制
                     resource.setrlimit(resource.RLIMIT_CPU, (timeout, timeout))
@@ -49,7 +57,9 @@ class ProcessManager:
                     resource.setrlimit(resource.RLIMIT_NPROC, (10, 10))
 
                     # 设置文件大小限制
-                    resource.setrlimit(resource.RLIMIT_FSIZE, (10 * 1024 * 1024, 10 * 1024 * 1024))
+                    resource.setrlimit(
+                        resource.RLIMIT_FSIZE, (10 * 1024 * 1024, 10 * 1024 * 1024)
+                    )
 
                     # 进入临时目录
                     os.chdir(temp_dir)
@@ -69,7 +79,7 @@ class ProcessManager:
                     text=True,
                     cwd=temp_dir,
                     env=env,
-                    preexec_fn=preexec_fn
+                    preexec_fn=preexec_fn,
                 )
 
                 self.active_processes[process.pid] = process
@@ -106,7 +116,7 @@ class ProcessManager:
                         execution_time=execution_time,
                         memory_used_mb=0,
                         exit_code=-1,
-                        error_message="Execution timeout"
+                        error_message="Execution timeout",
                     )
 
                 execution_time = time.time() - start_time
@@ -128,7 +138,7 @@ class ProcessManager:
                     stderr=stderr_data,
                     execution_time=execution_time,
                     memory_used_mb=0,  # TODO: 实现内存监控
-                    exit_code=exit_code
+                    exit_code=exit_code,
                 )
 
             except subprocess.TimeoutExpired:
@@ -143,7 +153,7 @@ class ProcessManager:
                     execution_time=execution_time,
                     memory_used_mb=0,
                     exit_code=-1,
-                    error_message="Process timeout"
+                    error_message="Process timeout",
                 )
 
             except OSError as e:
@@ -155,7 +165,7 @@ class ProcessManager:
                     execution_time=execution_time,
                     memory_used_mb=0,
                     exit_code=-1,
-                    error_message=f"OS Error: {str(e)}"
+                    error_message=f"OS Error: {str(e)}",
                 )
 
             finally:
