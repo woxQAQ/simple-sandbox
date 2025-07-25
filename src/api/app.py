@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from .middleware import rate_limit_middleware
+from starlette.middleware.base import BaseHTTPMiddleware
 from .routes import execute_router, health_router
 
 # 创建FastAPI应用
@@ -21,8 +21,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# 添加速率限制中间件
-from starlette.middleware.base import BaseHTTPMiddleware
+
 
 class RateLimitMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request, call_next):

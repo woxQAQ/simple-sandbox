@@ -11,7 +11,6 @@ from pathlib import Path
 # 添加src目录到Python路径
 sys.path.insert(0, str(Path(__file__).parent / "src"))
 
-from src.api.app import app
 
 def main():
     # 从环境变量获取配置

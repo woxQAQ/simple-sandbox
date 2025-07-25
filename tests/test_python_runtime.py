@@ -1,4 +1,3 @@
-import pytest
 from src.runtime import PythonRuntime, ExecutionStatus
 
 
