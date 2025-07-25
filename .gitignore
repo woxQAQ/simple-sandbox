@@ -3,6 +3,7 @@ __pycache__/
 *.py[oc]
 build/
 dist/
+!src/runtime/extensions/transformer/nodejs/node_modules/acorn/dist
 wheels/
 *.egg-info
 
