@@ -3,14 +3,11 @@
 协调各语言的AST转换
 """
 
-import os
-import json
-import subprocess
-from typing import Dict, List, Any, Optional
-from pathlib import Path
+from typing import Any, Dict, List
 
-from .python_ast_plugin import python_ast_registry, PythonASTContext
-from .nodejs_ast_plugin import nodejs_ast_registry
+from src.runtime.extensions.node import nodejs_ast_manager, nodejs_ast_registry
+from src.runtime.extensions.python import python_ast_registry
+from src.runtime.extensions.transformer import PythonASTContext
 
 
 class RuntimeASTManager:
@@ -56,7 +53,6 @@ class RuntimeASTManager:
 
     def _transform_javascript(self, code: str, context: Dict[str, Any]) -> str:
         """转换JavaScript/TypeScript代码 - 通过Node进程调用acorn"""
-        from .nodejs_ast_plugin import nodejs_ast_manager
 
         return nodejs_ast_manager.transform_code(code, context)
 

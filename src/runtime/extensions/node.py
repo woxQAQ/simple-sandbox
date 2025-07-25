@@ -4,40 +4,41 @@ Node.js原生AST插件系统
 分离AST解析和插件扩展逻辑
 """
 
+from dataclasses import dataclass
 import json
-import subprocess
 import os
-from typing import Dict, List, Any, Optional
+from pathlib import Path
+import subprocess
+from typing import Any, Dict
+
+@dataclass
+class NodeASTPlugin:
+    name: str
+    priority: int
+
+def get_plugins() :
+    """获取所有插件"""
+    path = Path.cwd() / "plugins/nodejs"
+    plugins = []
+    for file in path.glob("*.js"):
+        if file.name != "index.js":
+            plugin = NodeASTPlugin(name=file.stem, priority=100)
+            plugins.append(plugin)
+    return plugins
 
 
-class NodeJSASTPlugin:
-    """Node.js AST插件基类"""
-
-    def __init__(self, name: str, priority: int = 100):
-        self.name = name
-        self.priority = priority
-
-    def should_transform(
-        self, ast_data: Dict[str, Any], context: Dict[str, Any]
-    ) -> bool:
-        """判断是否应该应用此插件"""
-        raise NotImplementedError("子类必须实现should_transform方法")
-
-    def transform(self, ast_data: Dict[str, Any], context: Dict[str, Any]) -> str:
-        """转换AST并返回代码"""
-        raise NotImplementedError("子类必须实现transform方法")
-
-
-class NodeJSASTRegistry:
-    """Node.js AST插件注册表"""
+class NodeASTRegistry:
+    """Python AST插件注册表"""
 
     def __init__(self):
-        self.plugins: List[NodeJSASTPlugin] = []
+        self.plugins = get_plugins()
 
-    def register(self, plugin: NodeJSASTPlugin):
+    def register(self, plugin: NodeASTPlugin):
         """注册插件"""
         self.plugins.append(plugin)
+        # 按优先级排序
         self.plugins.sort(key=lambda p: p.priority, reverse=True)
+
 
 
 class NodeJSASTManager:
@@ -45,7 +46,7 @@ class NodeJSASTManager:
 
     def __init__(self):
         self.js_transformer_path = os.path.join(
-            os.path.dirname(__file__), "js_ast_transformer.js"
+            os.path.dirname(__file__), "transformer/nodejs/transformer.js"
         )
 
     def transform_code(self, code: str, context: Dict[str, Any] = None) -> str:
@@ -86,7 +87,4 @@ class NodeJSASTManager:
 
 # 全局管理器
 nodejs_ast_manager = NodeJSASTManager()
-
-
-# 注册表
-nodejs_ast_registry = NodeJSASTRegistry()
+nodejs_ast_registry = NodeASTRegistry()

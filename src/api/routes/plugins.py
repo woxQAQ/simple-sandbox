@@ -1,5 +1,6 @@
+from typing import Any, Dict
+
 from fastapi import APIRouter, HTTPException
-from typing import Dict, Any
 
 from ...runtime.plugins.manager import plugin_manager
 

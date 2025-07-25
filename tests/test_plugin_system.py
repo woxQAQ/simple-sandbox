@@ -1,10 +1,10 @@
 from src.runtime.plugins.base import LibraryHandler, ProcessingContext
-from src.runtime.plugins.manager import PluginManager
 from src.runtime.plugins.handlers import (
-    MatplotlibHandler, 
-    InputHandler, 
-    PandasHandler
+    InputHandler,
+    MatplotlibHandler,
+    PandasHandler,
 )
+from src.runtime.plugins.manager import PluginManager
 
 
 class TestPluginSystem:

@@ -15,7 +15,9 @@ def test_ast_system():
     print("🧪 测试AST插件系统...")
     
     # 测试matplotlib插件
-    from src.runtime.extensions.plugins.matplotlib_plugin import MatplotlibPlugin
+    from src.runtime.extensions.plugins.matplotlib_plugin import (
+        MatplotlibPlugin,
+    )
     
     plugin = MatplotlibPlugin()
     test_code = '''

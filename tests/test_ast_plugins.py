@@ -3,21 +3,27 @@ AST插件系统单元测试
 测试Python和Node.js的AST转换功能
 """
 
-import pytest
 import json
 import os
 import subprocess
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch
 
-from src.runtime.extensions.ast_plugins.python_ast_plugin import (
-    PythonASTPlugin, PythonASTRegistry, PythonASTContext,
-    PythonConsoleASTPlugin, MatplotlibASTPlugin, python_ast_registry
-)
+import pytest
+
 from src.runtime.extensions.ast_plugins.nodejs_ast_plugin import (
-    NodeJSASTPlugin, NodeJSASTRegistry, nodejs_ast_registry
+    NodeJSASTRegistry,
+    nodejs_ast_registry,
+)
+from src.runtime.extensions.ast_plugins.python_ast_plugin import (
+    MatplotlibASTPlugin,
+    PythonASTContext,
+    PythonASTRegistry,
+    PythonConsoleASTPlugin,
+    python_ast_registry,
 )
 from src.runtime.extensions.ast_plugins.runtime_ast_manager import (
-    RuntimeASTManager, transform_ast_code
+    RuntimeASTManager,
+    transform_ast_code,
 )
 
 
@@ -82,7 +88,7 @@ class TestPythonASTPlugins:
         plugin = MatplotlibASTPlugin()
         
         import ast
-        
+
         # 应该检测matplotlib导入
         code_import = "import matplotlib.pyplot as plt"
         tree = ast.parse(code_import)

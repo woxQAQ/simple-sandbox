@@ -1,4 +1,4 @@
-from src.runtime import NodeJSRuntime, ExecutionStatus
+from src.runtime import ExecutionStatus, NodeJSRuntime
 
 
 class TestNodeJSRuntime:

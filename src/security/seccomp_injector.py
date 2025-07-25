@@ -3,12 +3,11 @@
 在代码执行前将预编译的BPF策略注入到进程中
 """
 
-import os
 import json
-from typing import Dict, List, Optional
-from pathlib import Path
+import os
 import subprocess
-
+from pathlib import Path
+from typing import Dict, List, Optional
 
 # seccomp常量
 PR_SET_SECCOMP = 22

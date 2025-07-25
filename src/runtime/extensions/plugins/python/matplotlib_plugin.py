@@ -4,7 +4,11 @@ Matplotlib增强插件
 """
 
 import ast
-from ..python_ast_plugin import PythonASTPlugin, PythonASTContext
+
+from src.runtime.extensions.transformer import (
+    PythonASTContext,
+    PythonASTPlugin,
+)
 
 
 class MatplotlibASTPlugin(PythonASTPlugin):

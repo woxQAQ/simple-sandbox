@@ -3,8 +3,8 @@
  * 分离AST解析和插件扩展逻辑
  */
 
-const acorn = require('acorn');
-const { getPlugins, applyPlugins } = require('./js_plugins');
+import { parse } from 'acorn';
+import { getPlugins, applyPlugins } from '../../plugins/nodejs';
 
 /**
  * 主转换函数
@@ -15,7 +15,7 @@ const { getPlugins, applyPlugins } = require('./js_plugins');
 function transformCode(sourceCode, options = {}) {
     try {
         // 解析AST
-        const ast = acorn.parse(sourceCode, {
+        const ast = parse(sourceCode, {
             ecmaVersion: 2022,
             sourceType: 'module',
             allowImportExportEverywhere: true,
@@ -51,4 +51,4 @@ if (require.main === module) {
     }));
 }
 
-module.exports = { transformCode };
+export default { transformCode };

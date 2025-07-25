@@ -10,9 +10,9 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent))
 
 from src.runtime.extensions import (
-    ASTTransformer, 
+    ASTTransformer,
     TransformationContext,
-    plugin_registry
+    plugin_registry,
 )
 from src.security.bpf_generator import BPFGenerator
 from src.security.seccomp_injector import seccomp_manager

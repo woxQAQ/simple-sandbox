@@ -1,4 +1,4 @@
-from src.runtime import PythonRuntime, ExecutionStatus
+from src.runtime import ExecutionStatus, PythonRuntime
 
 
 class TestPythonRuntime:

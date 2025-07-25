@@ -331,8 +331,6 @@ class BPFCompiler:
             "get_thread_area": 211,
             "lookup_dcookie": 212,
             "epoll_create": 213,
-            "epoll_ctl": 214,
-            "epoll_wait": 215,
             "remap_file_pages": 216,
             "getdents64": 217,
             "set_tid_address": 218,

@@ -2,8 +2,8 @@
  * JavaScript插件注册和导出
  */
 
-const ConsoleEnhancer = require('./console_plugin');
-const ImportEnhancer = require('./import_plugin');
+import ConsoleEnhancer from './console_plugin';
+import ImportEnhancer from './import_plugin';
 
 /**
  * 获取所有可用的插件
@@ -37,7 +37,7 @@ function applyPlugins(ast, plugins) {
     return enhancementCode;
 }
 
-module.exports = {
+export default {
     getPlugins,
     applyPlugins,
     ConsoleEnhancer,

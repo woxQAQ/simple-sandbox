@@ -3,10 +3,11 @@
 代码沙箱主入口文件
 """
 
-import uvicorn
 import os
 import sys
 from pathlib import Path
+
+import uvicorn
 
 # 添加src目录到Python路径
 sys.path.insert(0, str(Path(__file__).parent / "src"))

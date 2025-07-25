@@ -4,7 +4,8 @@ Python控制台增强插件
 """
 
 import ast
-from ..python_ast_plugin import PythonASTPlugin, PythonASTContext
+
+from ..python_ast_plugin import PythonASTContext, PythonASTPlugin
 
 
 class PythonConsoleASTPlugin(PythonASTPlugin):
