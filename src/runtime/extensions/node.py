@@ -4,17 +4,17 @@ Node.js原生AST插件系统
 分离AST解析和插件扩展逻辑
 """
 
-from dataclasses import dataclass
 import json
 import os
-from pathlib import Path
 import subprocess
+from dataclasses import dataclass
+from pathlib import Path
 from typing import Any, Dict
+
 
 @dataclass
 class NodeASTPlugin:
     name: str
-    priority: int
 
 def get_plugins() :
     """获取所有插件"""
@@ -22,7 +22,7 @@ def get_plugins() :
     plugins = []
     for file in path.glob("*.js"):
         if file.name != "index.js":
-            plugin = NodeASTPlugin(name=file.stem, priority=100)
+            plugin = NodeASTPlugin(name=file.stem)
             plugins.append(plugin)
     return plugins
 
