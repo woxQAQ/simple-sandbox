@@ -1,10 +1,11 @@
 import os
 import tempfile
-from typing import List, Dict
+from typing import List, Dict, Any
 
 from .base import LanguageRuntime
 from .models import ExecutionResult
 from .manager import ProcessManager
+from .extensions.registry import extension_manager
 
 
 class NodeJSRuntime(LanguageRuntime):
