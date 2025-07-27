@@ -4,8 +4,37 @@
  */
 
 import { parse } from 'acorn';
-import { getPlugins, applyPlugins } from '../../plugins/nodejs';
-
+import { ConsolePlugin, ImportPlugin } from '../../plugins/nodejs';
+/**
+ * 获取所有可用的插件
+ * @returns {Array} - 插件列表
+ */
+function getPlugins() {
+    return [
+        new ConsolePlugin(),
+        new ImportPlugin()
+    ];
+}
+/**
+ * 应用插件到AST
+ * @param {Object} ast - 解析后的AST
+ * @param {Array} plugins - 插件列表
+ * @returns {string} - 生成的增强代码
+ */
+function applyPlugins(ast, plugins) {
+    let enhancementCode = '';
+    
+    // 按优先级排序
+    const sortedPlugins = plugins.sort((a, b) => b.priority - a.priority);
+    
+    for (const plugin of sortedPlugins) {
+        if (plugin.shouldTransform && plugin.shouldTransform(ast)) {
+            enhancementCode += plugin.generateEnhancementCode();
+        }
+    }
+    
+    return enhancementCode;
+}
 /**
  * 主转换函数
  * @param {string} sourceCode - 源代码

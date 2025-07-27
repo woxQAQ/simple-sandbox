@@ -3,9 +3,9 @@
  * 独立的功能模块，只包含扩展逻辑
  */
 
-class ImportEnhancer {
+class ImportPlugin {
     constructor() {
-        this.name = 'import_enhancer';
+        this.name = 'import_plugin';
         this.priority = 85;
     }
 
@@ -60,4 +60,4 @@ if (originalRequire) {
     }
 }
 
-module.exports = ImportEnhancer;
+module.exports = ImportPlugin;
