@@ -1,7 +1,7 @@
 from fastapi import APIRouter, HTTPException, Request
 
-from ...runtime import NodeJSRuntime, PythonRuntime
-from ..models import ExecuteRequest, ExecuteResponse, Language
+from src.api.models import ExecuteRequest, ExecuteResponse, Language
+from src.runtime import NodeJSRuntime, PythonRuntime
 
 router = APIRouter(prefix="/api/v1", tags=["execute"])
 
