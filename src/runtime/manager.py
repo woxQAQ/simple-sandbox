@@ -7,7 +7,7 @@ import tempfile
 import threading
 import time
 from pathlib import Path
-from typing import Dict, List, Optional
+from typing import Dict, List
 
 from .models import ExecutionResult, ExecutionStatus
 from ..security import SecurityManager, SecurityError
@@ -18,17 +18,21 @@ logger = logging.getLogger(__name__)
 class ProcessManager:
     """进程管理器，负责创建和管理代码执行进程"""
 
-    def __init__(self, work_dir: str = "/tmp/sandbox", enable_seccomp: bool = True):
+    def __init__(
+        self, work_dir: str = "/tmp/sandbox", enable_seccomp: bool = True
+    ):
         self.work_dir = Path(work_dir)
         self.work_dir.mkdir(parents=True, exist_ok=True)
         self.active_processes: Dict[int, subprocess.Popen] = {}
         self.enable_seccomp = enable_seccomp
-        
+
         # 初始化安全管理器
         if self.enable_seccomp:
             try:
                 self.security_manager = SecurityManager()
-                logger.info(f"Seccomp support: {self.security_manager.is_seccomp_supported()}")
+                logger.info(
+                    f"Seccomp support: {self.security_manager.is_seccomp_supported()}"
+                )
             except Exception as e:
                 logger.warning(f"Failed to initialize security manager: {e}")
                 self.security_manager = None
@@ -85,25 +89,36 @@ class ProcessManager:
 
                     # 进入临时目录
                     os.chdir(temp_dir)
-                    
+
                     # 应用seccomp安全配置
-                    if self.security_manager and self.security_manager.is_seccomp_supported():
+                    if (
+                        self.security_manager
+                        and self.security_manager.is_seccomp_supported()
+                    ):
                         try:
-                            logger.info(f"Applying seccomp profile for language: {language}")
+                            logger.info(
+                                f"Applying seccomp profile for language: {language}"
+                            )
                             self.security_manager.setup_security_profile(
                                 language=language,
                                 uid=sandbox_uid,
-                                gid=sandbox_gid
+                                gid=sandbox_gid,
                             )
                             logger.info("Seccomp profile applied successfully")
                         except SecurityError as e:
-                            logger.error(f"Failed to apply seccomp profile: {e}")
+                            logger.error(
+                                f"Failed to apply seccomp profile: {e}"
+                            )
                             # 在生产环境中，可能需要终止进程
                             # 这里我们记录错误但继续执行
                         except Exception as e:
-                            logger.error(f"Unexpected error applying seccomp: {e}")
+                            logger.error(
+                                f"Unexpected error applying seccomp: {e}"
+                            )
                     else:
-                        logger.warning("Seccomp not available, running without syscall filtering")
+                        logger.warning(
+                            "Seccomp not available, running without syscall filtering"
+                        )
 
                 except Exception as e:
                     logger.error(f"Error in preexec_fn: {e}")
