@@ -12,7 +12,7 @@ class TestAPI:
         """测试健康检查端点"""
         response = client.get("/api/v1/health")
         assert response.status_code == 200
-        
+
         data = response.json()
         assert data["status"] == "healthy"
         assert "timestamp" in data
@@ -23,19 +23,23 @@ class TestAPI:
         """测试获取支持的语言列表"""
         response = client.get("/api/v1/languages")
         assert response.status_code == 200
-        
+
         data = response.json()
         assert "languages" in data
         languages = data["languages"]
         assert len(languages) >= 2
-        
+
         # 检查Python
-        python_lang = next((lang for lang in languages if lang["name"] == "python"), None)
+        python_lang = next(
+            (lang for lang in languages if lang["name"] == "python"), None
+        )
         assert python_lang is not None
         assert ".py" in python_lang["extensions"]
-        
+
         # 检查Node.js
-        node_lang = next((lang for lang in languages if lang["name"] == "nodejs"), None)
+        node_lang = next(
+            (lang for lang in languages if lang["name"] == "nodejs"), None
+        )
         assert node_lang is not None
         assert ".js" in node_lang["extensions"]
 
@@ -45,12 +49,12 @@ class TestAPI:
             "language": "python",
             "code": "print('Hello from Python!')",
             "timeout": 5,
-            "memory_limit": 64
+            "memory_limit": 64,
         }
-        
+
         response = client.post("/api/v1/execute", json=payload)
         assert response.status_code == 200
-        
+
         data = response.json()
         assert data["status"] == "success"
         assert "Hello from Python!" in data["stdout"]
@@ -63,12 +67,12 @@ class TestAPI:
             "language": "nodejs",
             "code": "console.log('Hello from Node.js!');",
             "timeout": 5,
-            "memory_limit": 64
+            "memory_limit": 64,
         }
-        
+
         response = client.post("/api/v1/execute", json=payload)
         assert response.status_code == 200
-        
+
         data = response.json()
         assert data["status"] == "success"
         assert "Hello from Node.js!" in data["stdout"]
@@ -81,9 +85,9 @@ class TestAPI:
             "language": "invalid",
             "code": "print('test')",
             "timeout": 5,
-            "memory_limit": 64
+            "memory_limit": 64,
         }
-        
+
         response = client.post("/api/v1/execute", json=payload)
         assert response.status_code == 400
         assert "Unsupported language" in response.json()["detail"]
@@ -94,15 +98,17 @@ class TestAPI:
             "language": "python",
             "code": "print('Hello'  # 缺少右括号",
             "timeout": 5,
-            "memory_limit": 64
+            "memory_limit": 64,
         }
-        
+
         response = client.post("/api/v1/execute", json=payload)
         assert response.status_code == 200
-        
+
         data = response.json()
         assert data["status"] == "error"
-        assert "SyntaxError" in data["stderr"] or "syntax error" in data["stderr"]
+        assert (
+            "SyntaxError" in data["stderr"] or "syntax error" in data["stderr"]
+        )
 
     def test_execute_timeout(self):
         """测试超时处理"""
@@ -110,12 +116,12 @@ class TestAPI:
             "language": "python",
             "code": "import time\ntime.sleep(5)\nprint('timeout')",
             "timeout": 1,
-            "memory_limit": 64
+            "memory_limit": 64,
         }
-        
+
         response = client.post("/api/v1/execute", json=payload)
         assert response.status_code == 200
-        
+
         data = response.json()
         assert data["status"] == "timeout"
 
@@ -126,12 +132,12 @@ class TestAPI:
             "code": "name = input('Name: ')\nprint(f'Hello, {name}!')",
             "timeout": 5,
             "memory_limit": 64,
-            "input_data": "Alice"
+            "input_data": "Alice",
         }
-        
+
         response = client.post("/api/v1/execute", json=payload)
         assert response.status_code == 200
-        
+
         data = response.json()
         assert data["status"] == "success"
         assert "Hello, Alice!" in data["stdout"]
@@ -140,15 +146,15 @@ class TestAPI:
         """测试带环境变量的执行"""
         payload = {
             "language": "python",
-            "code": "import os\nprint(f'TEST_VAR: {os.getenv(\"TEST_VAR\", \"not found\")}')",
+            "code": 'import os\nprint(f\'TEST_VAR: {os.getenv("TEST_VAR", "not found")}\')',
             "timeout": 5,
             "memory_limit": 64,
-            "environment_variables": {"TEST_VAR": "test_value"}
+            "environment_variables": {"TEST_VAR": "test_value"},
         }
-        
+
         response = client.post("/api/v1/execute", json=payload)
         assert response.status_code == 200
-        
+
         data = response.json()
         assert data["status"] == "success"
         assert "TEST_VAR: test_value" in data["stdout"]
@@ -160,9 +166,9 @@ class TestAPI:
             "language": "python",
             "code": large_code,
             "timeout": 5,
-            "memory_limit": 64
+            "memory_limit": 64,
         }
-        
+
         response = client.post("/api/v1/execute", json=payload)
         assert response.status_code == 200
         assert response.json()["status"] == "success"
@@ -174,9 +180,9 @@ class TestAPI:
             "language": "python",
             "code": oversized_code,
             "timeout": 5,
-            "memory_limit": 64
+            "memory_limit": 64,
         }
-        
+
         response = client.post("/api/v1/execute", json=payload)
         assert response.status_code == 413
         assert "Code size exceeds" in response.json()["detail"]
@@ -186,7 +192,7 @@ class TestAPI:
         response = client.post(
             "/api/v1/execute",
             data="invalid json",
-            headers={"Content-Type": "application/json"}
+            headers={"Content-Type": "application/json"},
         )
         assert response.status_code == 422
 
@@ -202,7 +208,7 @@ class TestAPI:
             "language": "python",
             "code": "print('test')",
             "timeout": 0,  # 无效值
-            "memory_limit": 64
+            "memory_limit": 64,
         }
         response = client.post("/api/v1/execute", json=payload)
         assert response.status_code == 422
@@ -213,7 +219,7 @@ class TestAPI:
             "language": "python",
             "code": "print('test')",
             "timeout": 5,
-            "memory_limit": 8  # 无效值
+            "memory_limit": 8,  # 无效值
         }
         response = client.post("/api/v1/execute", json=payload)
         assert response.status_code == 422

@@ -21,7 +21,8 @@ class RateLimiter:
 
         # 清理过期的请求
         self.requests[client_ip] = [
-            req_time for req_time in self.requests[client_ip]
+            req_time
+            for req_time in self.requests[client_ip]
             if now - req_time < 60
         ]
 
@@ -56,8 +57,8 @@ async def rate_limit_middleware(request: Request, call_next):
             content={
                 "error": "Rate limit exceeded",
                 "message": f"Too many requests. Please wait {wait_time} seconds.",
-                "retry_after": wait_time
-            }
+                "retry_after": wait_time,
+            },
         )
 
     response = await call_next(request)

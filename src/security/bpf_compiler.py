@@ -74,7 +74,9 @@ class BPFCompiler:
 
         # 加载系统调用号
         bpf_program.append(
-            self._create_instruction(self.BPF_LD | self.BPF_W | self.BPF_ABS, 0, 0, 0)
+            self._create_instruction(
+                self.BPF_LD | self.BPF_W | self.BPF_ABS, 0, 0, 0
+            )
         )
 
         # 为每个允许的syscall添加检查
@@ -531,7 +533,9 @@ class SeccompLoader:
         self.libc = ctypes.CDLL("libc.so.6")
         self.libseccomp = ctypes.CDLL("libseccomp.so.2")
 
-    def load_bpf_program(self, bpf_bytes: bytes, pid: int | None = None) -> bool:
+    def load_bpf_program(
+        self, bpf_bytes: bytes, pid: int | None = None
+    ) -> bool:
         """加载BPF程序到进程"""
         import os
 

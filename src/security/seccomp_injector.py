@@ -157,7 +157,9 @@ class RuntimeSeccompManager:
         self.injector = SeccompInjector()
         self.active_policies: Dict[int, str] = {}
 
-    def setup_for_execution(self, language: str, process_id: int = None) -> bool:
+    def setup_for_execution(
+        self, language: str, process_id: int = None
+    ) -> bool:
         """为代码执行设置seccomp"""
         if process_id is None:
             process_id = os.getpid()

@@ -45,7 +45,10 @@ class PythonRuntime(LanguageRuntime):
 
         # 创建临时Python文件
         with tempfile.NamedTemporaryFile(
-            mode="w", suffix=".py", dir=self.process_manager.work_dir, delete=False
+            mode="w",
+            suffix=".py",
+            dir=self.process_manager.work_dir,
+            delete=False,
         ) as f:
             f.write(processed_code)
             temp_filename = f.name

@@ -132,10 +132,15 @@ class UpdatedSeccompInjector:
 
             # 创建sock_fprog结构
             class sock_fprog(ctypes.Structure):
-                _fields_ = [("len", ctypes.c_ushort), ("filter", ctypes.c_void_p)]
+                _fields_ = [
+                    ("len", ctypes.c_ushort),
+                    ("filter", ctypes.c_void_p),
+                ]
 
             # 创建BPF程序数组
-            bpf_array = (ctypes.c_char * len(bpf_bytes)).from_buffer_copy(bpf_bytes)
+            bpf_array = (ctypes.c_char * len(bpf_bytes)).from_buffer_copy(
+                bpf_bytes
+            )
 
             # 创建sock_fprog
             prog = sock_fprog()
@@ -143,7 +148,9 @@ class UpdatedSeccompInjector:
             prog.filter = ctypes.cast(bpf_array, ctypes.c_void_p)
 
             # 应用seccomp
-            result = libc.prctl(PR_SET_SECCOMP, SECCOMP_MODE_FILTER, ctypes.byref(prog))
+            result = libc.prctl(
+                PR_SET_SECCOMP, SECCOMP_MODE_FILTER, ctypes.byref(prog)
+            )
 
             return result == 0
 
@@ -153,7 +160,9 @@ class UpdatedSeccompInjector:
 
     def _get_syscalls_for_language(self, language: str) -> List[str]:
         """获取特定语言的系统调用列表"""
-        syscalls_file = Path(__file__).parent / "syscalls" / f"{language}_syscalls.json"
+        syscalls_file = (
+            Path(__file__).parent / "syscalls" / f"{language}_syscalls.json"
+        )
         if syscalls_file.exists():
             with open(syscalls_file) as f:
                 return json.load(f)

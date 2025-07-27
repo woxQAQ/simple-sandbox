@@ -16,7 +16,8 @@ from typing import Any, Dict
 class NodeASTPlugin:
     name: str
 
-def get_plugins() :
+
+def get_plugins():
     """获取所有插件"""
     path = Path.cwd() / "plugins/nodejs"
     plugins = []
@@ -38,7 +39,6 @@ class NodeASTRegistry:
         self.plugins.append(plugin)
         # 按优先级排序
         self.plugins.sort(key=lambda p: p.priority, reverse=True)
-
 
 
 class NodeJSASTManager:

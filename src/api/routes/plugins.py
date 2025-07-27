@@ -10,9 +10,7 @@ router = APIRouter(prefix="/api/v1", tags=["plugins"])
 @router.get("/plugins")
 async def get_plugins():
     """获取所有可用的插件处理器"""
-    return {
-        "plugins": plugin_manager.get_available_handlers()
-    }
+    return {"plugins": plugin_manager.get_available_handlers()}
 
 
 @router.post("/plugins/register")
@@ -21,7 +19,7 @@ async def register_plugin(plugin_info: Dict[str, Any]):
     # 这里可以扩展支持动态加载处理器
     return {
         "message": "Plugin registration endpoint available for future extension",
-        "current_plugins": plugin_manager.get_available_handlers()
+        "current_plugins": plugin_manager.get_available_handlers(),
     }
 
 
@@ -32,12 +30,11 @@ async def disable_plugin(plugin_name: str):
         plugin_manager.unregister_handler(plugin_name)
         return {
             "message": f"Plugin {plugin_name} disabled",
-            "plugins": plugin_manager.get_available_handlers()
+            "plugins": plugin_manager.get_available_handlers(),
         }
     except KeyError:
         raise HTTPException(
-            status_code=404,
-            detail=f"Plugin {plugin_name} not found"
+            status_code=404, detail=f"Plugin {plugin_name} not found"
         )
 
 
@@ -47,5 +44,5 @@ async def enable_plugin(plugin_name: str):
     # 这里可以扩展支持重新启用处理器
     return {
         "message": f"Plugin {plugin_name} enable endpoint available",
-        "plugins": plugin_manager.get_available_handlers()
+        "plugins": plugin_manager.get_available_handlers(),
     }

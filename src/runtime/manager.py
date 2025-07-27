@@ -34,7 +34,9 @@ class ProcessManager:
 
         # 创建临时工作目录
         with tempfile.TemporaryDirectory(dir=self.work_dir) as temp_dir:
-            Path(temp_dir)  # Create Path object but don't assign to unused variable
+            Path(
+                temp_dir
+            )  # Create Path object but don't assign to unused variable
 
             # 设置环境变量
             env = os.environ.copy()
@@ -47,7 +49,10 @@ class ProcessManager:
                     # 设置内存限制
                     resource.setrlimit(
                         resource.RLIMIT_AS,
-                        (memory_limit * 1024 * 1024, memory_limit * 1024 * 1024),
+                        (
+                            memory_limit * 1024 * 1024,
+                            memory_limit * 1024 * 1024,
+                        ),
                     )
 
                     # 设置CPU时间限制
@@ -58,7 +63,8 @@ class ProcessManager:
 
                     # 设置文件大小限制
                     resource.setrlimit(
-                        resource.RLIMIT_FSIZE, (10 * 1024 * 1024, 10 * 1024 * 1024)
+                        resource.RLIMIT_FSIZE,
+                        (10 * 1024 * 1024, 10 * 1024 * 1024),
                     )
 
                     # 进入临时目录

@@ -17,11 +17,14 @@ class MatplotlibASTPlugin(PythonASTPlugin):
     def __init__(self):
         super().__init__("matplotlib_ast", priority=95)
 
-    def should_transform(self, node: ast.AST, context: PythonASTContext) -> bool:
+    def should_transform(
+        self, node: ast.AST, context: PythonASTContext
+    ) -> bool:
         """检测matplotlib导入"""
         if isinstance(node, ast.Import):
             return any(
-                alias.name.startswith("matplotlib") or alias.name == "matplotlib.pyplot"
+                alias.name.startswith("matplotlib")
+                or alias.name == "matplotlib.pyplot"
                 for alias in node.names
             )
         elif isinstance(node, ast.ImportFrom):

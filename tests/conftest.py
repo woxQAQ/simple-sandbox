@@ -11,6 +11,7 @@ def temp_dir():
     yield temp_dir
     shutil.rmtree(temp_dir)
 
+
 @pytest.fixture
 def sample_python_code():
     """提供示例Python代码"""
@@ -25,10 +26,11 @@ result = fibonacci(10)
 print(f"Fibonacci(10) = {result}")
 '''
 
+
 @pytest.fixture
 def sample_nodejs_code():
     """提供示例Node.js代码"""
-    return '''
+    return """
 function fibonacci(n) {
     if (n <= 1) return n;
     return fibonacci(n-1) + fibonacci(n-2);
@@ -36,12 +38,14 @@ function fibonacci(n) {
 
 const result = fibonacci(10);
 console.log(`Fibonacci(10) = ${result}`);
-'''
+"""
+
 
 @pytest.fixture
 def invalid_python_code():
     """提供无效的Python代码"""
     return 'print("Hello"  # 缺少右括号'
+
 
 @pytest.fixture
 def invalid_nodejs_code():

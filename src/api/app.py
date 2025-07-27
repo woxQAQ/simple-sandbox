@@ -10,7 +10,7 @@ app = FastAPI(
     description="安全的代码执行沙箱服务",
     version="1.0.0",
     docs_url="/docs",
-    redoc_url="/redoc"
+    redoc_url="/redoc",
 )
 
 # 添加CORS中间件
@@ -23,11 +23,12 @@ app.add_middleware(
 )
 
 
-
 class RateLimitMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request, call_next):
         from .middleware.rate_limit import rate_limit_middleware
+
         return await rate_limit_middleware(request, call_next)
+
 
 app.add_middleware(RateLimitMiddleware)
 
@@ -40,11 +41,7 @@ app.include_router(plugins_router)
 @app.get("/")
 async def root():
     """根路径"""
-    return {
-        "message": "Code Sandbox API",
-        "version": "1.0.0",
-        "docs": "/docs"
-    }
+    return {"message": "Code Sandbox API", "version": "1.0.0", "docs": "/docs"}
 
 
 @app.on_event("startup")
@@ -61,4 +58,5 @@ async def shutdown_event():
 
 if __name__ == "__main__":
     import uvicorn
+
     uvicorn.run(app, host="0.0.0.0", port=8000)
