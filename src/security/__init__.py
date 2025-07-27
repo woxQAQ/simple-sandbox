@@ -99,7 +99,7 @@ class SecurityManager:
 
     def is_seccomp_supported(self):
         """检查当前平台是否支持seccomp"""
-        return SeccompInjector.is_supported()
+        return True  # 此模块只在Linux上可用
 
     def setup_security_profile(self, language: str, uid: int, gid: int):
         """
@@ -110,9 +110,6 @@ class SecurityManager:
             uid: 目标用户ID
             gid: 目标组ID
         """
-        if not self.is_seccomp_supported():
-            raise SecurityError("Seccomp is not supported on this platform")
-
         # 获取系统调用列表
         syscalls = self.get_syscalls_for_language(language)
         if not syscalls:

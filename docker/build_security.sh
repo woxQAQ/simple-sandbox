@@ -29,24 +29,17 @@ log_error() {
     echo -e "${RED}[ERROR]${NC} $1"
 }
 
-# 检查操作系统
+# 检查操作系统 - 仅支持Linux
 check_platform() {
     log_info "Checking platform compatibility..."
     
-    case "$(uname -s)" in
-        Linux)
-            log_success "Linux platform detected - seccomp supported"
-            PLATFORM="linux"
-            ;;
-        Darwin)
-            log_warning "macOS platform detected - seccomp not supported, building stub library"
-            PLATFORM="darwin"
-            ;;
-        *)
-            log_error "Unsupported platform: $(uname -s)"
-            exit 1
-            ;;
-    esac
+    if [ "$(uname -s)" != "Linux" ]; then
+        log_error "This build system only supports Linux. Current platform: $(uname -s)"
+        exit 1
+    fi
+    
+    log_success "Linux platform detected - seccomp supported"
+    PLATFORM="linux"
     
     ARCH=$(uname -m)
     log_info "Architecture: $ARCH"
@@ -181,7 +174,8 @@ print('Wrapper test: PASSED')
     if [ $? -eq 0 ]; then
         log_success "Wrapper test passed"
     else
-        log_warning "Wrapper test failed (expected on non-Linux platforms)"
+        log_error "Wrapper test failed"
+        exit 1
     fi
     
     log_success "Basic tests completed"
@@ -203,7 +197,7 @@ Architecture: $(uname -m)
 Builder: $(whoami)
 
 Components Built:
-- seccomp_injector.c -> libseccomp_injector.so/dylib
+- seccomp_injector.c -> libseccomp_injector.so
 - Python security modules
 - System call configuration parser
 - Security manager integration
@@ -239,9 +233,7 @@ main() {
     log_info "Shared library location: build/lib/"
     log_info "Build logs: build/logs/"
     
-    if [ "$PLATFORM" = "linux" ]; then
-        log_info "To install system-wide (requires sudo): cd src/security/bpf && make install"
-    fi
+    log_info "To install system-wide (requires sudo): cd src/security/bpf && make install"
 }
 
 # 处理命令行参数

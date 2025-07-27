@@ -3,8 +3,6 @@
  * 支持amd64和arm64架构
  */
 
-#ifdef __linux__
-
 #define _GNU_SOURCE
 #include <stdio.h>
 #include <stdlib.h>
@@ -17,12 +15,60 @@
 #include <grp.h>
 #include "seccomp_injector.h"
 
+#ifdef __linux__
 /* Linux特定头文件 */
 #include <sys/prctl.h>
 #include <sys/syscall.h>
 #include <linux/seccomp.h>
 #include <linux/filter.h>
 #include <linux/audit.h>
+#else
+/* 非Linux平台的存根定义 */
+#define PR_SET_NO_NEW_PRIVS 38
+#define SECCOMP_MODE_FILTER 2
+#define SECCOMP_RET_ALLOW 0x7fff0000U
+#define SECCOMP_RET_ERRNO 0x00050000U
+#define SECCOMP_RET_KILL 0x00000000U
+#define EPERM 1
+
+typedef unsigned short __u16;
+typedef unsigned char __u8;
+typedef unsigned int __u32;
+typedef unsigned long long __u64;
+
+struct sock_filter {
+    __u16 code;
+    __u8 jt;
+    __u8 jf;
+    __u32 k;
+};
+
+struct sock_fprog {
+    unsigned short len;
+    struct sock_filter *filter;
+};
+
+#define BPF_LD 0x00
+#define BPF_W 0x00
+#define BPF_ABS 0x20
+#define BPF_JMP 0x05
+#define BPF_JEQ 0x10
+#define BPF_K 0x00
+#define BPF_RET 0x06
+
+#define AUDIT_ARCH_X86_64 0xc000003e
+#define AUDIT_ARCH_AARCH64 0xc00000b7
+
+#define BPF_STMT(code, k) { (unsigned short)(code), 0, 0, k }
+#define BPF_JUMP(code, k, jt, jf) { (unsigned short)(code), jt, jf, k }
+
+/* 存根函数 */
+static int prctl(int option, unsigned long arg2, unsigned long arg3, unsigned long arg4, unsigned long arg5) {
+    (void)option; (void)arg2; (void)arg3; (void)arg4; (void)arg5;
+    errno = ENOSYS;
+    return -1;
+}
+#endif
 
 /* seccomp数据结构 */
 struct seccomp_data {
@@ -56,12 +102,17 @@ static void log_info(const char* msg) {
 
 /* 设置PR_SET_NO_NEW_PRIVS */
 int setup_no_new_privs(void) {
+#ifdef __linux__
     if (prctl(PR_SET_NO_NEW_PRIVS, 1, 0, 0, 0) != 0) {
         log_error("Failed to set PR_SET_NO_NEW_PRIVS", SECCOMP_ERROR_PRCTL);
         return SECCOMP_ERROR_PRCTL;
     }
     log_info("PR_SET_NO_NEW_PRIVS set successfully");
     return SECCOMP_SUCCESS;
+#else
+    log_error("seccomp not supported on this platform", SECCOMP_ERROR_UNSUPPORTED);
+    return SECCOMP_ERROR_UNSUPPORTED;
+#endif
 }
 
 /* 降低权限 */
@@ -144,6 +195,7 @@ int apply_seccomp_filter(const int* syscalls, size_t syscall_count) {
         return SECCOMP_ERROR_INVALID_ARGS;
     }
     
+#ifdef __linux__
     struct sock_filter* filter = NULL;
     size_t filter_len = 0;
     
@@ -169,6 +221,10 @@ int apply_seccomp_filter(const int* syscalls, size_t syscall_count) {
     free(filter);
     log_info("Seccomp filter applied successfully");
     return SECCOMP_SUCCESS;
+#else
+    log_error("seccomp not supported on this platform", SECCOMP_ERROR_UNSUPPORTED);
+    return SECCOMP_ERROR_UNSUPPORTED;
+#endif
 }
 
 /* 完整的seccomp注入流程 */
@@ -217,33 +273,3 @@ const char* get_error_description(int error_code) {
             return "Unknown error";
     }
 }
-
-#else /* !__linux__ */
-
-/* 非Linux平台的存根实现 */
-#include "seccomp_injector.h"
-
-int setup_no_new_privs(void) {
-    return SECCOMP_ERROR_UNSUPPORTED;
-}
-
-int drop_privileges(uid_t uid, gid_t gid) {
-    return SECCOMP_ERROR_UNSUPPORTED;
-}
-
-int apply_seccomp_filter(const int* syscalls, size_t syscall_count) {
-    return SECCOMP_ERROR_UNSUPPORTED;
-}
-
-int inject_seccomp_profile(const int* syscalls, size_t syscall_count, uid_t uid, gid_t gid) {
-    return SECCOMP_ERROR_UNSUPPORTED;
-}
-
-const char* get_error_description(int error_code) {
-    if (error_code == SECCOMP_ERROR_UNSUPPORTED) {
-        return "Seccomp is only supported on Linux";
-    }
-    return "Unknown error";
-}
-
-#endif /* __linux__ */

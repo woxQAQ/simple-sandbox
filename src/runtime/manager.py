@@ -91,10 +91,7 @@ class ProcessManager:
                     os.chdir(temp_dir)
 
                     # 应用seccomp安全配置
-                    if (
-                        self.security_manager
-                        and self.security_manager.is_seccomp_supported()
-                    ):
+                    if self.security_manager:
                         try:
                             logger.info(
                                 f"Applying seccomp profile for language: {language}"
@@ -115,10 +112,6 @@ class ProcessManager:
                             logger.error(
                                 f"Unexpected error applying seccomp: {e}"
                             )
-                    else:
-                        logger.warning(
-                            "Seccomp not available, running without syscall filtering"
-                        )
 
                 except Exception as e:
                     logger.error(f"Error in preexec_fn: {e}")

@@ -18,19 +18,15 @@ else
     $(error Unsupported architecture: $(ARCH))
 endif
 
-# 平台检测
+# 平台检测 - 仅支持Linux
 UNAME_S := $(shell uname -s)
-ifeq ($(UNAME_S),Linux)
-    PLATFORM_FLAGS = -DLINUX
-    LIB_EXT = so
-    LDFLAGS += -Wl,-soname,libseccomp_injector.$(LIB_EXT).1
-else ifeq ($(UNAME_S),Darwin)
-    PLATFORM_FLAGS = -DDARWIN
-    LIB_EXT = dylib
-    LDFLAGS = -dynamiclib -install_name @rpath/libseccomp_injector.$(LIB_EXT)
-else
-    $(error Unsupported platform: $(UNAME_S))
+ifneq ($(UNAME_S),Linux)
+    $(error This build system only supports Linux. Current platform: $(UNAME_S))
 endif
+
+PLATFORM_FLAGS = -DLINUX
+LIB_EXT = so
+LDFLAGS += -Wl,-soname,libseccomp_injector.$(LIB_EXT).1
 
 # 源文件和目标文件
 SRCS = seccomp_injector.c
@@ -65,23 +61,15 @@ clean:
 
 # 安装到系统目录（需要sudo权限）
 install: $(TARGET)
-	@if [ "$(UNAME_S)" = "Linux" ]; then \
-		sudo cp $(BUILD_DIR)/$(TARGET) $(INSTALL_DIR)/; \
-		sudo ldconfig; \
-		echo "Installed $(TARGET) to $(INSTALL_DIR)"; \
-	else \
-		echo "Install target is only supported on Linux"; \
-	fi
+	@sudo cp $(BUILD_DIR)/$(TARGET) $(INSTALL_DIR)/
+	@sudo ldconfig
+	@echo "Installed $(TARGET) to $(INSTALL_DIR)"
 
 # 卸载
 uninstall:
-	@if [ "$(UNAME_S)" = "Linux" ]; then \
-		sudo rm -f $(INSTALL_DIR)/$(TARGET); \
-		sudo ldconfig; \
-		echo "Uninstalled $(TARGET) from $(INSTALL_DIR)"; \
-	else \
-		echo "Uninstall target is only supported on Linux"; \
-	fi
+	@sudo rm -f $(INSTALL_DIR)/$(TARGET)
+	@sudo ldconfig
+	@echo "Uninstalled $(TARGET) from $(INSTALL_DIR)"
 
 # 测试编译（不链接）
 test-compile: $(OBJS)
@@ -108,8 +96,8 @@ help:
 	@echo "Available targets:"
 	@echo "  all          - Build the shared library (default)"
 	@echo "  clean        - Remove build artifacts"
-	@echo "  install      - Install to system directory (Linux only, requires sudo)"
-	@echo "  uninstall    - Remove from system directory (Linux only, requires sudo)"
+	@echo "  install      - Install to system directory (requires sudo)"
+	@echo "  uninstall    - Remove from system directory (requires sudo)"
 	@echo "  test-compile - Test compilation without linking"
 	@echo "  info         - Show build configuration"
 	@echo "  check-deps   - Check build dependencies"

@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-seccomp注入器的Python包装器
+seccomp注入器的Python包装器 - Linux专用
 提供Python接口来调用C实现的seccomp注入功能
 """
 
@@ -8,6 +8,12 @@ import ctypes
 import sys
 from typing import List, Optional
 from pathlib import Path
+
+# 平台检查
+if not sys.platform.startswith("linux"):
+    raise ImportError(
+        "This module is Linux-only. Seccomp is not supported on other platforms."
+    )
 
 # 错误码常量
 SECCOMP_SUCCESS = 0
@@ -58,11 +64,9 @@ class SeccompInjector:
 
     def _find_library_path(self) -> str:
         """查找seccomp注入器共享库"""
-        # 可能的库文件名
+        # Linux共享库文件名
         lib_names = [
             "libseccomp_injector.so",
-            "libseccomp_injector.dylib",  # macOS (虽然不支持seccomp)
-            "seccomp_injector.dll",  # Windows (虽然不支持seccomp)
         ]
 
         # 搜索路径
@@ -206,7 +210,7 @@ class SeccompInjector:
     @staticmethod
     def is_supported() -> bool:
         """检查当前平台是否支持seccomp"""
-        return sys.platform.startswith("linux")
+        return True  # 此模块只在Linux上可用
 
 
 # 便利函数
@@ -241,12 +245,9 @@ def inject_seccomp_for_language(
 
 if __name__ == "__main__":
     # 简单的测试
-    if SeccompInjector.is_supported():
-        print("Seccomp is supported on this platform")
-        try:
-            injector = SeccompInjector()
-            print("Seccomp injector loaded successfully")
-        except Exception as e:
-            print(f"Failed to load seccomp injector: {e}")
-    else:
-        print("Seccomp is not supported on this platform")
+    print("Seccomp is supported on this platform")
+    try:
+        injector = SeccompInjector()
+        print("Seccomp injector loaded successfully")
+    except Exception as e:
+        print(f"Failed to load seccomp injector: {e}")
