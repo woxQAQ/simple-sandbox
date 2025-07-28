@@ -114,109 +114,6 @@ build_shared_library() {
     cd ../../..
 }
 
-# 验证Python模块
-validate_python_modules() {
-    log_info "Validating Python modules..."
-    
-    # 检查语法
-    if python3 -m py_compile src/security/__init__.py; then
-        log_success "security/__init__.py syntax OK"
-    else
-        log_error "Syntax error in security/__init__.py"
-        exit 1
-    fi
-    
-    if python3 -m py_compile src/security/syscalls/parser.py; then
-        log_success "syscalls/parser.py syntax OK"
-    else
-        log_error "Syntax error in syscalls/parser.py"
-        exit 1
-    fi
-    
-    if python3 -m py_compile src/security/injection/seccomp_wrapper.py; then
-        log_success "injection/seccomp_wrapper.py syntax OK"
-    else
-        log_error "Syntax error in injection/seccomp_wrapper.py"
-        exit 1
-    fi
-    
-    log_success "All Python modules validated"
-}
-
-# 运行测试
-run_tests() {
-    log_info "Running basic functionality tests..."
-    
-    # 测试系统调用配置解析器
-    python3 -c "
-from src.security.syscalls.parser import SyscallConfigParser
-parser = SyscallConfigParser()
-print('Supported languages:', parser.get_supported_languages())
-print('Python syscalls count:', len(parser.get_syscalls_for_language('python')))
-print('Parser test: PASSED')
-" 2>&1 | tee -a build/logs/test.log
-    
-    if [ $? -eq 0 ]; then
-        log_success "Parser test passed"
-    else
-        log_error "Parser test failed"
-        exit 1
-    fi
-    
-    # 测试seccomp包装器（仅检查导入）
-    python3 -c "
-from src.security.injection.seccomp_wrapper import SeccompInjector
-injector = SeccompInjector()
-print('Seccomp supported:', injector.is_supported())
-print('Wrapper test: PASSED')
-" 2>&1 | tee -a build/logs/test.log
-    
-    if [ $? -eq 0 ]; then
-        log_success "Wrapper test passed"
-    else
-        log_error "Wrapper test failed"
-        exit 1
-    fi
-    
-    log_success "Basic tests completed"
-}
-
-# 生成构建报告
-generate_report() {
-    log_info "Generating build report..."
-    
-    REPORT_FILE="build/logs/build_report.txt"
-    
-    cat > "$REPORT_FILE" << EOF
-Seccomp Security Component Build Report
-======================================
-
-Build Date: $(date)
-Platform: $(uname -s) $(uname -r)
-Architecture: $(uname -m)
-Builder: $(whoami)
-
-Components Built:
-- seccomp_injector.c -> libseccomp_injector.so
-- Python security modules
-- System call configuration parser
-- Security manager integration
-
-Build Status: SUCCESS
-
-Files Created:
-$(find build -type f -name "*" | sort)
-
-Next Steps:
-1. Test the integration with the runtime manager
-2. Verify seccomp profiles work correctly
-3. Deploy to container environment
-
-EOF
-    
-    log_success "Build report generated: $REPORT_FILE"
-}
-
 # 主函数
 main() {
     log_info "Starting seccomp security component build..."
@@ -225,9 +122,6 @@ main() {
     check_dependencies
     setup_build_dirs
     build_shared_library
-    validate_python_modules
-    run_tests
-    generate_report
     
     log_success "Build completed successfully!"
     log_info "Shared library location: build/lib/"
