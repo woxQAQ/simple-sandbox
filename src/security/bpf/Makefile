@@ -59,18 +59,6 @@ clean:
 	@rm -f $(BUILD_DIR)/$(TARGET)
 	@echo "Cleaned build artifacts"
 
-# 安装到系统目录（需要sudo权限）
-install: $(TARGET)
-	@sudo cp $(BUILD_DIR)/$(TARGET) $(INSTALL_DIR)/
-	@sudo ldconfig
-	@echo "Installed $(TARGET) to $(INSTALL_DIR)"
-
-# 卸载
-uninstall:
-	@sudo rm -f $(INSTALL_DIR)/$(TARGET)
-	@sudo ldconfig
-	@echo "Uninstalled $(TARGET) from $(INSTALL_DIR)"
-
 # 测试编译（不链接）
 test-compile: $(OBJS)
 	@echo "Compilation test passed"
@@ -96,8 +84,6 @@ help:
 	@echo "Available targets:"
 	@echo "  all          - Build the shared library (default)"
 	@echo "  clean        - Remove build artifacts"
-	@echo "  install      - Install to system directory (requires sudo)"
-	@echo "  uninstall    - Remove from system directory (requires sudo)"
 	@echo "  test-compile - Test compilation without linking"
 	@echo "  info         - Show build configuration"
 	@echo "  check-deps   - Check build dependencies"
