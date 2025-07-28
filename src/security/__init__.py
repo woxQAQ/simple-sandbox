@@ -9,7 +9,6 @@ security模块 - 代码沙盒安全组件
 - 安全策略管理
 """
 
-from .syscalls.parser import SyscallConfigParser
 from src.security.injection.seccomp_wrapper import (
     SeccompInjector,
     SeccompInjectionError,
@@ -28,7 +27,6 @@ __author__ = "Code Sandbox Security Team"
 
 __all__ = [
     # 主要类
-    "SyscallConfigParser",
     "SeccompInjector",
     "SecurityManager",
     # 异常
@@ -58,44 +56,46 @@ class SecurityManager:
     """
     安全管理器 - 统一的安全策略管理接口
 
-    整合系统调用配置解析和seccomp注入功能，提供简化的API
+    提供语言特定的seccomp安全策略管理，使用编译时确定的系统调用列表
     """
 
-    def __init__(self, config_dir: str = None, library_path: str = None):
+    # 支持的编程语言列表
+    SUPPORTED_LANGUAGES = ["python", "nodejs"]
+
+    def __init__(self, library_dir: str = None):
         """
         初始化安全管理器
 
         Args:
-            config_dir: 系统调用配置文件目录
-            library_path: seccomp注入器共享库路径
+            library_dir: seccomp注入器共享库目录路径
         """
-        self.parser = SyscallConfigParser(config_dir)
-        self.injector = None
-        self.library_path = library_path
+        self.library_dir = library_dir
+        self._injectors = {}  # 缓存已加载的注入器
 
-        # 延迟加载注入器（只在需要时加载）
-        self._injector_loaded = False
-
-    def _ensure_injector_loaded(self):
-        """确保注入器已加载"""
-        if not self._injector_loaded:
+    def _get_injector_for_language(self, language: str) -> SeccompInjector:
+        """
+        获取指定语言的seccomp注入器
+        
+        Args:
+            language: 编程语言名称
+            
+        Returns:
+            SeccompInjector: 语言特定的注入器实例
+        """
+        if language not in self.SUPPORTED_LANGUAGES:
+            raise SecurityError(f"Unsupported language: {language}")
+            
+        if language not in self._injectors:
             try:
-                self.injector = SeccompInjector(self.library_path)
-                self._injector_loaded = True
+                self._injectors[language] = SeccompInjector(language, self.library_dir)
             except Exception as e:
-                raise SecurityError(f"Failed to load seccomp injector: {e}")
+                raise SecurityError(f"Failed to load seccomp injector for {language}: {e}")
+                
+        return self._injectors[language]
 
     def get_supported_languages(self):
         """获取支持的编程语言列表"""
-        return self.parser.get_supported_languages()
-
-    def get_syscalls_for_language(self, language: str):
-        """获取指定语言的系统调用列表"""
-        return self.parser.get_syscalls_for_language(language)
-
-    def validate_syscalls(self, syscalls):
-        """验证系统调用列表"""
-        return self.parser.validate_syscalls(syscalls)
+        return self.SUPPORTED_LANGUAGES.copy()
 
     def is_seccomp_supported(self):
         """检查当前平台是否支持seccomp"""
@@ -110,45 +110,68 @@ class SecurityManager:
             uid: 目标用户ID
             gid: 目标组ID
         """
-        # 获取系统调用列表
-        syscalls = self.get_syscalls_for_language(language)
-        if not syscalls:
-            raise SecurityError(
-                f"No syscall configuration found for language: {language}"
-            )
+        injector = self._get_injector_for_language(language)
+        injector.inject_seccomp_profile(uid, gid)
 
-        # 验证系统调用列表
-        if not self.validate_syscalls(syscalls):
-            raise SecurityError(
-                f"Invalid syscall configuration for language: {language}"
-            )
+    def setup_no_new_privs(self, language: str):
+        """
+        设置PR_SET_NO_NEW_PRIVS
+        
+        Args:
+            language: 编程语言名称
+        """
+        injector = self._get_injector_for_language(language)
+        injector.setup_no_new_privs()
 
-        # 加载并执行注入
-        self._ensure_injector_loaded()
-        self.injector.inject_seccomp_profile(syscalls, uid, gid)
+    def drop_privileges(self, language: str, uid: int, gid: int):
+        """
+        降低权限
+        
+        Args:
+            language: 编程语言名称
+            uid: 目标用户ID
+            gid: 目标组ID
+        """
+        injector = self._get_injector_for_language(language)
+        injector.drop_privileges(uid, gid)
 
-    def setup_no_new_privs(self):
-        """设置PR_SET_NO_NEW_PRIVS"""
-        self._ensure_injector_loaded()
-        self.injector.setup_no_new_privs()
+    def apply_seccomp_filter(self, language: str):
+        """
+        应用seccomp过滤器
+        
+        Args:
+            language: 编程语言名称
+        """
+        injector = self._get_injector_for_language(language)
+        injector.apply_seccomp_filter()
 
-    def drop_privileges(self, uid: int, gid: int):
-        """降低权限"""
-        self._ensure_injector_loaded()
-        self.injector.drop_privileges(uid, gid)
 
-    def apply_seccomp_filter(self, syscalls):
-        """应用seccomp过滤器"""
-        self._ensure_injector_loaded()
-        self.injector.apply_seccomp_filter(syscalls)
+def inject_seccomp_for_language(
+    language: str,
+    uid: int,
+    gid: int,
+    library_dir: str = None,
+):
+    """
+    便利函数：为指定语言注入seccomp安全策略
+
+    这是一个高级API，封装了完整的安全设置流程
+
+    Args:
+        language: 编程语言名称
+        uid: 目标用户ID
+        gid: 目标组ID
+        library_dir: seccomp注入器共享库目录路径
+    """
+    manager = SecurityManager(library_dir)
+    manager.setup_security_profile(language, uid, gid)
 
 
 def create_secure_process(
     language: str,
     uid: int,
     gid: int,
-    config_dir: str = None,
-    library_path: str = None,
+    library_dir: str = None,
 ):
     """
     创建安全进程的便利函数
@@ -159,10 +182,9 @@ def create_secure_process(
         language: 编程语言名称
         uid: 目标用户ID
         gid: 目标组ID
-        config_dir: 系统调用配置文件目录
-        library_path: seccomp注入器共享库路径
+        library_dir: seccomp注入器共享库目录路径
     """
-    manager = SecurityManager(config_dir, library_path)
+    manager = SecurityManager(library_dir)
     manager.setup_security_profile(language, uid, gid)
 
 

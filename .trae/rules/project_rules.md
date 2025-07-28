@@ -20,6 +20,9 @@
 src/
     api/ # fastapi 接口
     security/ # 安全相关的代码
+        bpf/ # 生成各语言的动态链接库用于注入seccomp（使用c语言）
+        injection/ # seccomp 注入器
+        static/ # 存放各语言的系统调用列表（json格式）
     runtime/ # 不同语言的runtime
         {lang}_runtime.py # 语言运行时
         manager.py # 运行时管理器
@@ -27,6 +30,10 @@ src/
             transformers/ # 插件转换器
             plugins/ # 插件代码
 tests/ # 测试代码
+scripts/ # 开发/构建时使用的脚本
+deploy/
+    helm/ # helm-charts
+.github/ # github相关内容
 ```
 
 # workflow
