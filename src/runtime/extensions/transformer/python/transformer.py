@@ -1,4 +1,3 @@
-
 import ast
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
@@ -14,6 +13,7 @@ class PythonASTContext:
     user_id: str
     metadata: Dict[str, Any]
 
+
 class PythonASTPlugin(ABC):
     """Python AST插件基类"""
 
@@ -22,7 +22,9 @@ class PythonASTPlugin(ABC):
         self.priority = priority
 
     @abstractmethod
-    def should_transform(self, node: ast.AST, context: PythonASTContext) -> bool:
+    def should_transform(
+        self, node: ast.AST, context: PythonASTContext
+    ) -> bool:
         """判断是否应该应用此插件"""
         pass
 
@@ -35,7 +37,9 @@ class PythonASTPlugin(ABC):
         """访问并转换整个AST树"""
         return self._visit_recursive(tree, context)
 
-    def _visit_recursive(self, node: ast.AST, context: PythonASTContext) -> ast.AST:
+    def _visit_recursive(
+        self, node: ast.AST, context: PythonASTContext
+    ) -> ast.AST:
         """递归访问AST节点"""
         if self.should_transform(node, context):
             node = self.transform(node, context)
@@ -82,4 +86,3 @@ class PythonASTTransformer(ast.NodeTransformer):
         import astor
 
         return astor.to_source(tree)
-

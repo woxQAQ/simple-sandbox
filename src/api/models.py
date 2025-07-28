@@ -13,7 +13,9 @@ class ExecuteRequest(BaseModel):
     language: Language = Field(..., description="编程语言")
     code: str = Field(..., description="要执行的代码")
     timeout: int = Field(default=30, ge=1, le=300, description="超时时间(秒)")
-    memory_limit: int = Field(default=128, ge=16, le=1024, description="内存限制(MB)")
+    memory_limit: int = Field(
+        default=128, ge=16, le=1024, description="内存限制(MB)"
+    )
     input_data: str = Field(default="", description="标准输入数据")
     environment_variables: Optional[Dict[str, str]] = Field(
         default=None, description="环境变量"
@@ -39,4 +41,6 @@ class LanguageInfo(BaseModel):
 class HealthResponse(BaseModel):
     status: str = Field(..., description="服务状态")
     timestamp: str = Field(..., description="时间戳")
-    supported_languages: list[LanguageInfo] = Field(..., description="支持的语言")
+    supported_languages: list[LanguageInfo] = Field(
+        ..., description="支持的语言"
+    )

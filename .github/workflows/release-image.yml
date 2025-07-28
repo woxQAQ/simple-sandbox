@@ -1,0 +1,183 @@
+name: Build and Release Docker Image
+
+# 触发条件
+on:
+  push:
+    branches: 
+      - main
+    tags:
+      - 'v*'
+  pull_request:
+    branches: 
+      - main
+      - develop
+  workflow_dispatch:
+
+# 环境变量
+env:
+  REGISTRY: docker.io
+  IMAGE: woxqaq/simple-sandbox
+  BUILDX_PLATFORM: linux/amd64,linux/arm64
+  BUILDX_ARGS: --sbom=false --provenance=false
+
+# 权限设置
+permissions:
+  contents: read
+  actions: write
+  packages: write
+
+jobs:
+  # 构建安全组件
+  build-security:
+    name: Build Security Components
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+    
+    - name: Install build dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y build-essential gcc libc6-dev
+        python -m pip install --upgrade pip
+        pip install ruff black isort
+    
+    - name: Format code
+      run: make fmt
+    
+    - name: Build security components
+      run: make build-security
+    
+    - name: Upload security artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: security-components
+        path: |
+          build/lib/*.so
+          build/logs/
+        retention-days: 1
+
+  # 构建和推送Docker镜像
+  build-and-release:
+    name: Build and Release Docker Image
+    runs-on: ubuntu-latest
+    needs: build-security
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Download security artifacts
+      uses: actions/download-artifact@v4
+      with:
+        name: security-components
+    
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+    
+    - name: Log in to Docker Hub
+      if: github.event_name != 'pull_request'
+      uses: docker/login-action@v3
+      with:
+        registry: ${{ env.REGISTRY }}
+        username: ${{ secrets.DOCKER_USERNAME }}
+        password: ${{ secrets.DOCKER_PASSWORD }}
+    
+    - name: Extract metadata
+      id: meta
+      uses: docker/metadata-action@v5
+      with:
+        images: ${{ env.REGISTRY }}/${{ env.IMAGE }}
+        tags: |
+           type=ref,event=branch
+           type=ref,event=pr
+           type=semver,pattern={{version}}
+           type=semver,pattern={{major}}.{{minor}}
+           type=semver,pattern={{major}}
+           type=raw,value=latest,enable={{is_default_branch}}
+    
+    - name: Determine version
+      id: version
+      run: |
+        if [[ "${{ github.ref }}" == refs/tags/* ]]; then
+          VERSION=${GITHUB_REF#refs/tags/}
+        elif [[ "${{ github.ref }}" == "refs/heads/main" ]]; then
+          VERSION="latest"
+        else
+          # 将斜杠替换为连字符，确保Docker标签格式有效
+          VERSION="${{ github.ref_name }}"
+          VERSION=${VERSION//\//-}
+        fi
+        echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
+        echo "Building version: $VERSION"
+    
+    # 构建Docker镜像（PR仅构建，其他情况构建并推送）
+    - name: Build Docker image
+      if: github.event_name == 'pull_request'
+      run: |
+        export VERSION="${{ steps.version.outputs.VERSION }}"
+        make build-image
+    
+    - name: Build and push Docker image
+      if: github.event_name != 'pull_request'
+      run: |
+        export VERSION="${{ steps.version.outputs.VERSION }}"
+        make build-image-and-push
+    
+    - name: Image digest
+      if: github.event_name != 'pull_request'
+      run: |
+        echo "Image pushed with tags: ${{ steps.meta.outputs.tags }}"
+        echo "Image digest: ${{ steps.meta.outputs.digest }}"
+
+  # 清理构建器（可选）
+  cleanup:
+    name: Cleanup Build Environment
+    runs-on: ubuntu-latest
+    needs: [build-and-release]
+    if: always()
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Clean up builder
+      run: |
+        # 清理可能的构建器实例
+        if command -v make >/dev/null 2>&1; then
+          make clean-builder || true
+        fi
+    
+    - name: Clean up artifacts
+      uses: geekyeggo/delete-artifact@v4
+      if: always()
+      with:
+        name: security-components
+        failOnError: false
+
+  # 安全扫描
+  security-scan:
+    name: Security Scan
+    runs-on: ubuntu-latest
+    needs: build-and-release
+    if: github.event_name != 'pull_request'
+    
+    steps:
+    - name: Run Trivy vulnerability scanner
+      uses: aquasecurity/trivy-action@master
+      with:
+        image-ref: '${{ env.REGISTRY }}/${{ env.IMAGE }}:${{ needs.build-and-release.outputs.version || ''latest'' }}'
+        format: 'sarif'
+        output: 'trivy-results.sarif'
+    
+    - name: Upload Trivy scan results
+      uses: github/codeql-action/upload-sarif@v3
+      if: always()
+      with:
+        sarif_file: 'trivy-results.sarif'

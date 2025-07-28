@@ -14,7 +14,9 @@ class PythonConsoleASTPlugin(PythonASTPlugin):
     def __init__(self):
         super().__init__("python_console_ast", priority=90)
 
-    def should_transform(self, node: ast.AST, context: PythonASTContext) -> bool:
+    def should_transform(
+        self, node: ast.AST, context: PythonASTContext
+    ) -> bool:
         """检测print调用"""
         return (
             isinstance(node, ast.Expr)
@@ -40,7 +42,9 @@ class PythonConsoleASTPlugin(PythonASTPlugin):
         )
 
         format_call = ast.Call(
-            func=ast.Attribute(value=timestamp_call, attr="isoformat", ctx=ast.Load()),
+            func=ast.Attribute(
+                value=timestamp_call, attr="isoformat", ctx=ast.Load()
+            ),
             args=[],
             keywords=[],
         )
@@ -52,7 +56,10 @@ class PythonConsoleASTPlugin(PythonASTPlugin):
                 ast.FormattedValue(value=format_call, conversion=-1),
                 ast.Constant(value="] "),
             ]
-            + [ast.FormattedValue(value=arg, conversion=-1) for arg in node.value.args]
+            + [
+                ast.FormattedValue(value=arg, conversion=-1)
+                for arg in node.value.args
+            ]
         )
 
         # 替换为新的print调用

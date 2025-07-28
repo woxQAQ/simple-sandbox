@@ -104,7 +104,10 @@ process.exit = function(code = 0) {
 
         # 创建临时JavaScript文件
         with tempfile.NamedTemporaryFile(
-            mode="w", suffix=".js", dir=self.process_manager.work_dir, delete=False
+            mode="w",
+            suffix=".js",
+            dir=self.process_manager.work_dir,
+            delete=False,
         ) as f:
             f.write(processed_code)
             temp_filename = f.name

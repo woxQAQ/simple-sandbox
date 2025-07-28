@@ -3,9 +3,9 @@
  * 独立的功能模块，只包含扩展逻辑
  */
 
-class ConsoleEnhancer {
+class ConsolePlugin {
     constructor() {
-        this.name = 'console_enhancer';
+        this.name = 'console_plugin';   
         this.priority = 90;
     }
 
@@ -72,4 +72,4 @@ class ConsoleEnhancer {
     }
 }
 
-module.exports = ConsoleEnhancer;
+module.exports = ConsolePlugin;

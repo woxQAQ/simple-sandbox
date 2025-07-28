@@ -19,15 +19,16 @@ def main():
     port = int(os.getenv("PORT", "8000"))
     workers = int(os.getenv("WORKERS", "1"))
     reload = os.getenv("RELOAD", "false").lower() == "true"
-    
+
     uvicorn.run(
         "src.api.app:app",
         host=host,
         port=port,
         workers=workers,
         reload=reload,
-        log_level="info"
+        log_level="info",
     )
+
 
 if __name__ == "__main__":
     main()

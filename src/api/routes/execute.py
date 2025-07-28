@@ -1,36 +1,31 @@
 from fastapi import APIRouter, HTTPException, Request
 
-from ...runtime import NodeJSRuntime, PythonRuntime
-from ..models import ExecuteRequest, ExecuteResponse, Language
+from src.api.models import ExecuteRequest, ExecuteResponse, Language
+from src.runtime import NodeJSRuntime, PythonRuntime
 
 router = APIRouter(prefix="/api/v1", tags=["execute"])
 
 # 运行时映射
-RUNTIMES = {
-    Language.PYTHON: PythonRuntime(),
-    Language.NODEJS: NodeJSRuntime()
-}
+RUNTIMES = {Language.PYTHON: PythonRuntime(), Language.NODEJS: NodeJSRuntime()}
 
 
 @router.post("/execute", response_model=ExecuteResponse)
 async def execute_code(request: ExecuteRequest, client_request: Request):
     """执行代码"""
-    
+
     # 验证代码长度
     if len(request.code) > 1024 * 1024:  # 1MB限制
         raise HTTPException(
-            status_code=413,
-            detail="Code size exceeds 1MB limit"
+            status_code=413, detail="Code size exceeds 1MB limit"
         )
-    
+
     # 获取运行时
     runtime = RUNTIMES.get(request.language)
     if not runtime:
         raise HTTPException(
-            status_code=400,
-            detail=f"Unsupported language: {request.language}"
+            status_code=400, detail=f"Unsupported language: {request.language}"
         )
-    
+
     try:
         # 执行代码
         result = runtime.execute(
@@ -38,9 +33,9 @@ async def execute_code(request: ExecuteRequest, client_request: Request):
             timeout=request.timeout,
             memory_limit=request.memory_limit,
             input_data=request.input_data,
-            env_vars=request.environment_variables
+            env_vars=request.environment_variables,
         )
-        
+
         # 返回响应
         return ExecuteResponse(
             status=result.status.value,
@@ -49,13 +44,12 @@ async def execute_code(request: ExecuteRequest, client_request: Request):
             execution_time=result.execution_time,
             memory_used=result.memory_used_mb,
             exit_code=result.exit_code,
-            error=result.error_message
+            error=result.error_message,
         )
-        
+
     except Exception as e:
         raise HTTPException(
-            status_code=500,
-            detail=f"Internal server error: {str(e)}"
+            status_code=500, detail=f"Internal server error: {str(e)}"
         )
 
 
@@ -67,12 +61,12 @@ async def get_supported_languages():
             {
                 "name": "python",
                 "display_name": "Python",
-                "extensions": [".py", ".pyw"]
+                "extensions": [".py", ".pyw"],
             },
             {
-                "name": "nodejs", 
+                "name": "nodejs",
                 "display_name": "Node.js",
-                "extensions": [".js", ".mjs", ".cjs"]
-            }
+                "extensions": [".js", ".mjs", ".cjs"],
+            },
         ]
     }

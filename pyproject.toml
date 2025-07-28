@@ -30,15 +30,18 @@ line-length = 80
 target-version = ['py313']
 
 [[tool.uv.index]]
-url = "https://mirrors.tuna.tsinghua.edu.cn/pypi/web/simple/"
+url = "https://mirrors.tuna.tsinghua.edu.cn/pypi/web/simple"
 default = true
 
 [dependency-groups]
 dev = [
     "black>=25.1.0",
+    "httpx>=0.28.1",
     "isort>=6.0.1",
     "mypy>=1.17.0",
     "pytest>=8.4.1",
+    "bandit>=1.7.5",
+    "safety>=3.0.0",
     "ruff>=0.12.5",
 ]
 

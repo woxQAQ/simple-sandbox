@@ -9,6 +9,7 @@ import time
 from pathlib import Path
 from typing import Dict, List
 
+from ..security import SecurityError, SecurityManager
 from .models import ExecutionResult, ExecutionStatus
 
 logger = logging.getLogger(__name__)
@@ -17,16 +18,35 @@ logger = logging.getLogger(__name__)
 class ProcessManager:
     """进程管理器，负责创建和管理代码执行进程"""
 
-    def __init__(self, work_dir: str = "/tmp/sandbox"):
+    def __init__(
+        self, work_dir: str = "/tmp/sandbox", enable_seccomp: bool = True
+    ):
         self.work_dir = Path(work_dir)
         self.work_dir.mkdir(parents=True, exist_ok=True)
         self.active_processes: Dict[int, subprocess.Popen] = {}
+        self.enable_seccomp = enable_seccomp
+
+        # 初始化安全管理器
+        if self.enable_seccomp:
+            try:
+                self.security_manager = SecurityManager()
+                logger.info(
+                    f"Seccomp support: {self.security_manager.is_seccomp_supported()}"
+                )
+            except Exception as e:
+                logger.warning(f"Failed to initialize security manager: {e}")
+                self.security_manager = None
+        else:
+            self.security_manager = None
 
     def execute_process(
         self,
         command: List[str],
         timeout: int,
         memory_limit: int,
+        language: str = "python",
+        sandbox_uid: int = 65534,  # nobody用户
+        sandbox_gid: int = 65534,  # nobody组
         stdin_data: str = "",
         env_vars: Dict[str, str] | None = None,
     ) -> ExecutionResult:
@@ -34,20 +54,25 @@ class ProcessManager:
 
         # 创建临时工作目录
         with tempfile.TemporaryDirectory(dir=self.work_dir) as temp_dir:
-            Path(temp_dir)  # Create Path object but don't assign to unused variable
+            Path(
+                temp_dir
+            )  # Create Path object but don't assign to unused variable
 
             # 设置环境变量
             env = os.environ.copy()
             if env_vars:
                 env.update(env_vars)
 
-            # 设置资源限制
+            # 设置资源限制和安全配置
             def preexec_fn():
                 try:
                     # 设置内存限制
                     resource.setrlimit(
                         resource.RLIMIT_AS,
-                        (memory_limit * 1024 * 1024, memory_limit * 1024 * 1024),
+                        (
+                            memory_limit * 1024 * 1024,
+                            memory_limit * 1024 * 1024,
+                        ),
                     )
 
                     # 设置CPU时间限制
@@ -58,14 +83,40 @@ class ProcessManager:
 
                     # 设置文件大小限制
                     resource.setrlimit(
-                        resource.RLIMIT_FSIZE, (10 * 1024 * 1024, 10 * 1024 * 1024)
+                        resource.RLIMIT_FSIZE,
+                        (10 * 1024 * 1024, 10 * 1024 * 1024),
                     )
 
                     # 进入临时目录
                     os.chdir(temp_dir)
 
+                    # 应用seccomp安全配置
+                    if self.security_manager:
+                        try:
+                            logger.info(
+                                f"Applying seccomp profile for language: {language}"
+                            )
+                            self.security_manager.setup_security_profile(
+                                language=language,
+                                uid=sandbox_uid,
+                                gid=sandbox_gid,
+                            )
+                            logger.info("Seccomp profile applied successfully")
+                        except SecurityError as e:
+                            logger.error(
+                                f"Failed to apply seccomp profile: {e}"
+                            )
+                            # 在生产环境中，可能需要终止进程
+                            # 这里我们记录错误但继续执行
+                        except Exception as e:
+                            logger.error(
+                                f"Unexpected error applying seccomp: {e}"
+                            )
+
                 except Exception as e:
-                    logger.error(f"Error setting resource limits: {e}")
+                    logger.error(f"Error in preexec_fn: {e}")
+                    # 在安全配置失败时，可以选择终止进程
+                    # raise e
 
             start_time = time.time()
 
