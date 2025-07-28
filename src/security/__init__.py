@@ -12,7 +12,6 @@ security模块 - 代码沙盒安全组件
 from src.security.injection.seccomp_wrapper import (
     SeccompInjector,
     SeccompInjectionError,
-    inject_seccomp_for_language,
     SECCOMP_SUCCESS,
     SECCOMP_ERROR_PRCTL,
     SECCOMP_ERROR_SYSCALL,
@@ -75,22 +74,26 @@ class SecurityManager:
     def _get_injector_for_language(self, language: str) -> SeccompInjector:
         """
         获取指定语言的seccomp注入器
-        
+
         Args:
             language: 编程语言名称
-            
+
         Returns:
             SeccompInjector: 语言特定的注入器实例
         """
         if language not in self.SUPPORTED_LANGUAGES:
             raise SecurityError(f"Unsupported language: {language}")
-            
+
         if language not in self._injectors:
             try:
-                self._injectors[language] = SeccompInjector(language, self.library_dir)
+                self._injectors[language] = SeccompInjector(
+                    language, self.library_dir
+                )
             except Exception as e:
-                raise SecurityError(f"Failed to load seccomp injector for {language}: {e}")
-                
+                raise SecurityError(
+                    f"Failed to load seccomp injector for {language}: {e}"
+                )
+
         return self._injectors[language]
 
     def get_supported_languages(self):
@@ -116,7 +119,7 @@ class SecurityManager:
     def setup_no_new_privs(self, language: str):
         """
         设置PR_SET_NO_NEW_PRIVS
-        
+
         Args:
             language: 编程语言名称
         """
@@ -126,7 +129,7 @@ class SecurityManager:
     def drop_privileges(self, language: str, uid: int, gid: int):
         """
         降低权限
-        
+
         Args:
             language: 编程语言名称
             uid: 目标用户ID
@@ -138,7 +141,7 @@ class SecurityManager:
     def apply_seccomp_filter(self, language: str):
         """
         应用seccomp过滤器
-        
+
         Args:
             language: 编程语言名称
         """

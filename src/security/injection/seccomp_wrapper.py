@@ -52,7 +52,9 @@ class SeccompInjectionError(Exception):
 class SeccompInjector:
     """seccomp注入器类"""
 
-    def __init__(self, library_path: Optional[str] = None, language: Optional[str] = None):
+    def __init__(
+        self, library_path: Optional[str] = None, language: Optional[str] = None
+    ):
         """
         初始化seccomp注入器
 
@@ -168,9 +170,7 @@ class SeccompInjector:
         if result != SECCOMP_SUCCESS:
             raise SeccompInjectionError(result)
 
-    def inject_seccomp_profile(
-        self, uid: int, gid: int
-    ) -> None:
+    def inject_seccomp_profile(self, uid: int, gid: int) -> None:
         """完整的seccomp注入流程"""
         if not self._lib:
             raise SeccompInjectionError(SECCOMP_ERROR_UNSUPPORTED)
