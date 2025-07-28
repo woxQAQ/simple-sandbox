@@ -38,21 +38,17 @@ int drop_privileges(uid_t uid, gid_t gid);
 
 /**
  * 应用seccomp过滤器
- * @param syscalls 允许的系统调用号数组
- * @param syscall_count 系统调用数量
  * @return 成功返回SECCOMP_SUCCESS，失败返回错误码
  */
-int apply_seccomp_filter(const int* syscalls, size_t syscall_count);
+int apply_seccomp_filter(void);
 
 /**
  * 完整的seccomp注入流程
- * @param syscalls 允许的系统调用号数组
- * @param syscall_count 系统调用数量
  * @param uid 目标用户ID
  * @param gid 目标组ID
  * @return 成功返回SECCOMP_SUCCESS，失败返回错误码
  */
-int inject_seccomp_profile(const int* syscalls, size_t syscall_count, uid_t uid, gid_t gid);
+int inject_seccomp_profile(uid_t uid, gid_t gid);
 
 /**
  * 获取错误描述

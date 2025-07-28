@@ -85,6 +85,9 @@ static int prctl(int option, unsigned long arg2, unsigned long arg3, unsigned lo
 /* 最大支持的系统调用数量 */
 #define MAX_SYSCALLS 512
 
+/* 包含自动生成的系统调用定义 */
+#include "syscalls_generated.h"
+
 /* 日志函数 */
 static void log_error(const char* msg, int error_code) {
     syslog(LOG_ERR, "seccomp_injector: %s (error: %d, errno: %d)", msg, error_code, errno);
@@ -184,18 +187,13 @@ static int generate_bpf_program(const int* syscalls, size_t syscall_count,
 }
 
 /* 应用seccomp过滤器 */
-int apply_seccomp_filter(const int* syscalls, size_t syscall_count) {
-    if (!syscalls || syscall_count == 0) {
-        log_error("Invalid syscall list", SECCOMP_ERROR_INVALID_ARGS);
-        return SECCOMP_ERROR_INVALID_ARGS;
-    }
-    
+int apply_seccomp_filter(void) {
 #ifdef __linux__
     struct sock_filter* filter = NULL;
     size_t filter_len = 0;
     
     /* 生成BPF程序 */
-    int ret = generate_bpf_program(syscalls, syscall_count, &filter, &filter_len);
+    int ret = generate_bpf_program(ALLOWED_SYSCALLS, SYSCALL_COUNT, &filter, &filter_len);
     if (ret != SECCOMP_SUCCESS) {
         return ret;
     }
@@ -223,7 +221,7 @@ int apply_seccomp_filter(const int* syscalls, size_t syscall_count) {
 }
 
 /* 完整的seccomp注入流程 */
-int inject_seccomp_profile(const int* syscalls, size_t syscall_count, uid_t uid, gid_t gid) {
+int inject_seccomp_profile(uid_t uid, gid_t gid) {
     int ret;
     
     /* 1. 设置PR_SET_NO_NEW_PRIVS */
@@ -233,7 +231,7 @@ int inject_seccomp_profile(const int* syscalls, size_t syscall_count, uid_t uid,
     }
     
     /* 2. 应用seccomp过滤器 */
-    ret = apply_seccomp_filter(syscalls, syscall_count);
+    ret = apply_seccomp_filter();
     if (ret != SECCOMP_SUCCESS) {
         return ret;
     }

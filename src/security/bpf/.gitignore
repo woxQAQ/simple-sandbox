@@ -1,1 +1,2 @@
 seccomp_injector.o
+syscalls_generated.h

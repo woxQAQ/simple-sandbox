@@ -53,23 +53,30 @@ class SeccompInjectionError(Exception):
 class SeccompInjector:
     """seccomp注入器类"""
 
-    def __init__(self, library_path: Optional[str] = None):
+    def __init__(self, library_path: Optional[str] = None, language: Optional[str] = None):
         """
         初始化seccomp注入器
 
         Args:
             library_path: 共享库路径，如果为None则自动查找
+            language: 编程语言名称，用于加载对应的so库
         """
         self._lib = None
+        self._language = language
         self._load_library(library_path)
         self._setup_function_signatures()
 
-    def _find_library_path(self) -> str:
+    def _find_library_path(self, language: str = None) -> str:
         """查找seccomp注入器共享库"""
         # Linux共享库文件名
-        lib_names = [
-            "libseccomp_injector.so",
-        ]
+        if language:
+            lib_names = [
+                f"libseccomp_injector_{language}.so",
+            ]
+        else:
+            lib_names = [
+                "libseccomp_injector.so",
+            ]
 
         # 搜索路径
         search_paths = [
@@ -95,7 +102,7 @@ class SeccompInjector:
     def _load_library(self, library_path: Optional[str]):
         """加载共享库"""
         if library_path is None:
-            library_path = self._find_library_path()
+            library_path = self._find_library_path(self._language)
 
         try:
             self._lib = ctypes.CDLL(library_path)
@@ -118,17 +125,12 @@ class SeccompInjector:
         self._lib.drop_privileges.argtypes = [ctypes.c_uint32, ctypes.c_uint32]
         self._lib.drop_privileges.restype = ctypes.c_int
 
-        # apply_seccomp_filter(const int* syscalls, size_t syscall_count) -> int
-        self._lib.apply_seccomp_filter.argtypes = [
-            ctypes.POINTER(ctypes.c_int),
-            ctypes.c_size_t,
-        ]
+        # apply_seccomp_filter() -> int
+        self._lib.apply_seccomp_filter.argtypes = []
         self._lib.apply_seccomp_filter.restype = ctypes.c_int
 
-        # inject_seccomp_profile(const int* syscalls, size_t syscall_count, uid_t uid, gid_t gid) -> int
+        # inject_seccomp_profile(uid_t uid, gid_t gid) -> int
         self._lib.inject_seccomp_profile.argtypes = [
-            ctypes.POINTER(ctypes.c_int),
-            ctypes.c_size_t,
             ctypes.c_uint32,
             ctypes.c_uint32,
         ]
@@ -158,41 +160,23 @@ class SeccompInjector:
         if result != SECCOMP_SUCCESS:
             raise SeccompInjectionError(result)
 
-    def apply_seccomp_filter(self, syscalls: List[int]) -> None:
+    def apply_seccomp_filter(self) -> None:
         """应用seccomp过滤器"""
         if not self._lib:
             raise SeccompInjectionError(SECCOMP_ERROR_UNSUPPORTED)
 
-        if not syscalls:
-            raise SeccompInjectionError(
-                SECCOMP_ERROR_INVALID_ARGS, "Syscall list cannot be empty"
-            )
-
-        # 转换为C数组
-        syscall_array = (ctypes.c_int * len(syscalls))(*syscalls)
-
-        result = self._lib.apply_seccomp_filter(syscall_array, len(syscalls))
+        result = self._lib.apply_seccomp_filter()
         if result != SECCOMP_SUCCESS:
             raise SeccompInjectionError(result)
 
     def inject_seccomp_profile(
-        self, syscalls: List[int], uid: int, gid: int
+        self, uid: int, gid: int
     ) -> None:
         """完整的seccomp注入流程"""
         if not self._lib:
             raise SeccompInjectionError(SECCOMP_ERROR_UNSUPPORTED)
 
-        if not syscalls:
-            raise SeccompInjectionError(
-                SECCOMP_ERROR_INVALID_ARGS, "Syscall list cannot be empty"
-            )
-
-        # 转换为C数组
-        syscall_array = (ctypes.c_int * len(syscalls))(*syscalls)
-
         result = self._lib.inject_seccomp_profile(
-            syscall_array,
-            len(syscalls),
             ctypes.c_uint32(uid),
             ctypes.c_uint32(gid),
         )
@@ -228,16 +212,6 @@ def inject_seccomp_for_language(
         gid: 目标组ID
         library_path: 共享库路径
     """
-    # 加载系统调用配置
-    parser = SyscallConfigParser()
-    syscalls = parser.get_syscalls_for_language(language)
-
-    if not syscalls:
-        raise SeccompInjectionError(
-            SECCOMP_ERROR_INVALID_ARGS,
-            f"No syscall configuration found for language: {language}",
-        )
-
     # 执行注入
-    injector = SeccompInjector(library_path)
-    injector.inject_seccomp_profile(syscalls, uid, gid)
+    injector = SeccompInjector(library_path, language)
+    injector.inject_seccomp_profile(uid, gid)
