@@ -20,6 +20,12 @@ env:
   BUILDX_PLATFORM: linux/amd64,linux/arm64
   BUILDX_ARGS: --sbom=false --provenance=false
 
+# 权限设置
+permissions:
+  contents: read
+  actions: write
+  packages: write
+
 jobs:
   # 构建安全组件
   build-security:
