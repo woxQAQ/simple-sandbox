@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # 构建脚本 - 自动化seccomp安全组件的构建过程
 # 支持Linux平台的amd64和arm64架构
