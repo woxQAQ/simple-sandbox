@@ -3,17 +3,20 @@ name: Build and Release Docker Image
 # 触发条件
 on:
   push:
-    branches: [ main ]
+    branches: 
+      - main
     tags:
       - 'v*'
   pull_request:
-    branches: [ main ]
+    branches: 
+      - main
+      - develop
   workflow_dispatch:
 
 # 环境变量
 env:
   REGISTRY: docker.io
-  IMAGE: woxQAQ/simple-sandbox
+  IMAGE: woxqaq/simple-sandbox
   BUILDX_PLATFORM: linux/amd64,linux/arm64
   BUILDX_ARGS: --sbom=false --provenance=false
 
@@ -37,6 +40,7 @@ jobs:
         sudo apt-get update
         sudo apt-get install -y build-essential gcc libc6-dev
         python -m pip install --upgrade pip
+        pip install ruff black isort
     
     - name: Format code
       run: make fmt
@@ -49,8 +53,8 @@ jobs:
       with:
         name: security-components
         path: |
-          src/runtime/*.so
-          src/security/bpf/*.so
+          build/lib/*.so
+          build/logs/
         retention-days: 1
 
   # 构建和推送Docker镜像
@@ -100,7 +104,9 @@ jobs:
         elif [[ "${{ github.ref }}" == "refs/heads/main" ]]; then
           VERSION="latest"
         else
+          # 将斜杠替换为连字符，确保Docker标签格式有效
           VERSION="${{ github.ref_name }}"
+          VERSION=${VERSION//\//-}
         fi
         echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
         echo "Building version: $VERSION"
@@ -160,7 +166,7 @@ jobs:
     - name: Run Trivy vulnerability scanner
       uses: aquasecurity/trivy-action@master
       with:
-        image-ref: '${{ env.REGISTRY }}/${{ env.IMAGE }}:${{ needs.build-and-release.outputs.version || "latest" }}'
+        image-ref: '${{ env.REGISTRY }}/${{ env.IMAGE }}:${{ needs.build-and-release.outputs.version || ''latest'' }}'
         format: 'sarif'
         output: 'trivy-results.sarif'
     

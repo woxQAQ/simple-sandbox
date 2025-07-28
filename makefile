@@ -1,4 +1,4 @@
-IMAGE ?= "woxQAQ/simple-sandbox"
+IMAGE ?= "woxqaq/simple-sandbox"
 REGISTRY ?= "docker.io"
 VERSION ?= "latest"
 BUILDX_PLATFORM ?= "linux/amd64,linux/arm64"
@@ -47,6 +47,9 @@ clean-builder:
 	@if docker buildx inspect multi-platform >/dev/null 2>&1; then \
 		docker buildx rm multi-platform; \
 	fi
+
+version:
+	@echo "Using version: $(VERSION)"
 
 build-image: setup-builder version
 	docker buildx build -t $(REGISTRY)/$(IMAGE):$(VERSION) \
