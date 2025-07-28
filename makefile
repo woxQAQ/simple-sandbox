@@ -9,17 +9,17 @@ fmt:
 # 构建安全组件
 build-security:
 	@echo "Building seccomp security components..."
-	@./build_security.sh
+	@./scripts/build.sh
 
 # 测试安全组件
 test-security:
 	@echo "Testing security components..."
-	@./build_security.sh test
+	@./scripts/build.sh test
 
 # 清理构建产物
 clean-security:
 	@echo "Cleaning security build artifacts..."
-	@./build_security.sh clean
+	@./scripts/build.sh clean
 
 # 安装到系统（仅Linux，需要sudo）
 install-security: build-security

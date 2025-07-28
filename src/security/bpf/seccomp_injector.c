@@ -70,13 +70,8 @@ static int prctl(int option, unsigned long arg2, unsigned long arg3, unsigned lo
 }
 #endif
 
-/* seccomp数据结构 */
-struct seccomp_data {
-    int nr;
-    __u32 arch;
-    __u64 instruction_pointer;
-    __u64 args[6];
-};
+/* seccomp数据结构 - 使用内核定义，不再重新定义 */
+/* struct seccomp_data 已在 <linux/seccomp.h> 中定义 */
 
 /* 架构检测 */
 #if defined(__x86_64__)
