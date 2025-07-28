@@ -2,18 +2,19 @@
 # Multi-stage build for Linux containers
 
 # Build stage
-FROM ubuntu:22.04 AS builder
+FROM python:3.11-slim-bookworm AS builder
+ARG DEBIAN_MIRROR="http://deb.debian.org/debian testing main"
 
 # 安装构建依赖
-RUN apt-get update && apt-get install -y \
+RUN echo "deb ${DEBIAN_MIRROR}" > /etc/apt/sources.list \
+    apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
-    gcc \
-    make \
-    python3 \
-    python3-dev \
-    python3-pip \
+    lib-seccomp \
+    curl \
+    wget \
     libc6-dev \
     linux-libc-dev \
+    && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
 # 设置工作目录
@@ -21,7 +22,7 @@ WORKDIR /build
 
 # 复制源代码
 COPY src/ ./src/
-COPY build_security.sh ./
+COPY ./build.sh ./
 COPY build/ ./build/
 
 # 构建安全组件
