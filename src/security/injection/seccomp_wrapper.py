@@ -7,9 +7,8 @@ seccomp注入器的Python包装器 - Linux专用
 import ctypes
 import platform
 import sys
-from typing import List, Optional
+from typing import Optional
 from pathlib import Path
-from src.security.syscalls.parser import SyscallConfigParser
 
 # 平台检查
 if not sys.platform.startswith("linux"):

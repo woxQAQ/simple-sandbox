@@ -1,0 +1,371 @@
+name: Tests
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+  schedule:
+    # 每天凌晨2点运行完整测试套件
+    - cron: '0 2 * * *'
+
+jobs:
+  # 代码质量检查
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+    
+    - name: Install uv
+      run: |
+        curl -LsSf https://astral.sh/uv/install.sh | sh
+        echo "$HOME/.cargo/bin" >> $GITHUB_PATH
+    
+    - name: Install dependencies
+      run: |
+        uv sync --dev
+    
+    - name: Run linting
+      run: |
+        uv run ruff check src tests
+        uv run ruff format --check src tests
+    
+    - name: Type checking
+      run: |
+        uv run mypy src
+
+  # 单元测试
+  unit-tests:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+        python-version: ['3.10', '3.11', '3.12']
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ matrix.python-version }}
+    
+    - name: Install uv
+      run: |
+        curl -LsSf https://astral.sh/uv/install.sh | sh
+        echo "$HOME/.cargo/bin" >> $GITHUB_PATH
+    
+    - name: Install dependencies
+      run: |
+        uv sync --dev
+    
+    - name: Install Node.js (for runtime tests)
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+    
+    - name: Run unit tests
+      run: |
+        uv run pytest tests/unit/ -v --cov=src --cov-report=xml
+    
+    - name: Upload coverage to Codecov
+      if: matrix.os == 'ubuntu-latest' && matrix.python-version == '3.11'
+      uses: codecov/codecov-action@v3
+      with:
+        file: ./coverage.xml
+        flags: unit
+        name: unit-tests
+
+  # 集成测试
+  integration-tests:
+    runs-on: ubuntu-latest
+    needs: unit-tests
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+    
+    - name: Install uv
+      run: |
+        curl -LsSf https://astral.sh/uv/install.sh | sh
+        echo "$HOME/.cargo/bin" >> $GITHUB_PATH
+    
+    - name: Install dependencies
+      run: |
+        uv sync --dev
+    
+    - name: Install Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+    
+    - name: Run integration tests
+      run: |
+        uv run pytest tests/integration/ -v --cov=src --cov-report=xml
+    
+    - name: Upload coverage to Codecov
+      uses: codecov/codecov-action@v3
+      with:
+        file: ./coverage.xml
+        flags: integration
+        name: integration-tests
+
+  # 安全测试
+  security-tests:
+    runs-on: ubuntu-latest
+    needs: unit-tests
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+    
+    - name: Install uv
+      run: |
+        curl -LsSf https://astral.sh/uv/install.sh | sh
+        echo "$HOME/.cargo/bin" >> $GITHUB_PATH
+    
+    - name: Install dependencies
+      run: |
+        uv sync --dev
+    
+    - name: Install Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+    
+    - name: Run security tests
+      run: |
+        uv run pytest tests/security/ -v -m security
+    
+    - name: Run security scan
+      run: |
+        uv run bandit -r src/ -f json -o bandit-report.json || true
+        uv run safety check --json --output safety-report.json || true
+    
+    - name: Upload security reports
+      uses: actions/upload-artifact@v3
+      if: always()
+      with:
+        name: security-reports
+        path: |
+          bandit-report.json
+          safety-report.json
+
+  # 性能测试
+  performance-tests:
+    runs-on: ubuntu-latest
+    needs: integration-tests
+    if: github.event_name == 'schedule' || contains(github.event.head_commit.message, '[perf]')
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+    
+    - name: Install uv
+      run: |
+        curl -LsSf https://astral.sh/uv/install.sh | sh
+        echo "$HOME/.cargo/bin" >> $GITHUB_PATH
+    
+    - name: Install dependencies
+      run: |
+        uv sync --dev
+    
+    - name: Install Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+    
+    - name: Run performance tests
+      run: |
+        uv run pytest tests/performance/ -v -m performance --durations=0
+    
+    - name: Upload performance results
+      uses: actions/upload-artifact@v3
+      if: always()
+      with:
+        name: performance-results
+        path: |
+          tests.log
+          htmlcov/
+
+  # 端到端测试
+  e2e-tests:
+    runs-on: ubuntu-latest
+    needs: integration-tests
+    
+    services:
+      # 如果需要数据库或其他服务，在这里添加
+      redis:
+        image: redis:7
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 6379:6379
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+    
+    - name: Install uv
+      run: |
+        curl -LsSf https://astral.sh/uv/install.sh | sh
+        echo "$HOME/.cargo/bin" >> $GITHUB_PATH
+    
+    - name: Install dependencies
+      run: |
+        uv sync --dev
+    
+    - name: Install Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+    
+    - name: Start application
+      run: |
+        uv run uvicorn src.api.app:app --host 0.0.0.0 --port 8000 &
+        sleep 10  # 等待应用启动
+    
+    - name: Wait for application to be ready
+      run: |
+        timeout 30 bash -c 'until curl -f http://localhost:8000/health; do sleep 1; done'
+    
+    - name: Run E2E tests
+      run: |
+        uv run pytest tests/e2e/ -v -m e2e
+    
+    - name: Upload E2E test results
+      uses: actions/upload-artifact@v3
+      if: always()
+      with:
+        name: e2e-results
+        path: |
+          tests.log
+          htmlcov/
+
+  # Docker测试
+  docker-tests:
+    runs-on: ubuntu-latest
+    needs: unit-tests
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+    
+    - name: Build Docker image
+      run: |
+        docker build -t simple-sandbox:test .
+    
+    - name: Run container tests
+      run: |
+        # 启动容器
+        docker run -d --name test-container -p 8000:8000 simple-sandbox:test
+        sleep 10
+        
+        # 测试容器健康状态
+        curl -f http://localhost:8000/health
+        
+        # 测试基本功能
+        curl -X POST http://localhost:8000/api/v1/execute \
+          -H "Content-Type: application/json" \
+          -d '{"language": "python", "code": "print(\"Hello from Docker\")", "timeout": 30, "memory_limit": 128}'
+        
+        # 清理
+        docker stop test-container
+        docker rm test-container
+
+  # 覆盖率汇总
+  coverage:
+    runs-on: ubuntu-latest
+    needs: [unit-tests, integration-tests]
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+    
+    - name: Install uv
+      run: |
+        curl -LsSf https://astral.sh/uv/install.sh | sh
+        echo "$HOME/.cargo/bin" >> $GITHUB_PATH
+    
+    - name: Install dependencies
+      run: |
+        uv sync --dev
+    
+    - name: Install Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+    
+    - name: Run all tests with coverage
+      run: |
+        uv run pytest tests/ -v \
+          --cov=src \
+          --cov-report=term-missing \
+          --cov-report=html \
+          --cov-report=xml \
+          --cov-fail-under=80 \
+          -m "not (slow or performance)"
+    
+    - name: Upload coverage reports
+      uses: codecov/codecov-action@v3
+      with:
+        file: ./coverage.xml
+        flags: all
+        name: all-tests
+    
+    - name: Upload HTML coverage report
+      uses: actions/upload-artifact@v3
+      with:
+        name: coverage-html
+        path: htmlcov/
+
+  # 测试结果汇总
+  test-summary:
+    runs-on: ubuntu-latest
+    needs: [lint, unit-tests, integration-tests, security-tests, e2e-tests, docker-tests, coverage]
+    if: always()
+    
+    steps:
+    - name: Test Summary
+      run: |
+        echo "## 测试结果汇总" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "| 测试类型 | 状态 |" >> $GITHUB_STEP_SUMMARY
+        echo "|---------|------|" >> $GITHUB_STEP_SUMMARY
+        echo "| 代码质量检查 | ${{ needs.lint.result }} |" >> $GITHUB_STEP_SUMMARY
+        echo "| 单元测试 | ${{ needs.unit-tests.result }} |" >> $GITHUB_STEP_SUMMARY
+        echo "| 集成测试 | ${{ needs.integration-tests.result }} |" >> $GITHUB_STEP_SUMMARY
+        echo "| 安全测试 | ${{ needs.security-tests.result }} |" >> $GITHUB_STEP_SUMMARY
+        echo "| 端到端测试 | ${{ needs.e2e-tests.result }} |" >> $GITHUB_STEP_SUMMARY
+        echo "| Docker测试 | ${{ needs.docker-tests.result }} |" >> $GITHUB_STEP_SUMMARY
+        echo "| 覆盖率检查 | ${{ needs.coverage.result }} |" >> $GITHUB_STEP_SUMMARY
