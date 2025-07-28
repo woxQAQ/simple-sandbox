@@ -113,7 +113,9 @@ class SeccompInjector:
                     library_path, f"libseccomp_injector_{self._language}.so"
                 )
             else:
-                library_path = os.path.join(library_path, "libseccomp_injector.so")
+                library_path = os.path.join(
+                    library_path, "libseccomp_injector.so"
+                )
 
         try:
             self._lib = ctypes.CDLL(library_path)

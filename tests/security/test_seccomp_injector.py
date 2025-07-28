@@ -146,19 +146,23 @@ class TestSeccompInjectorLibraryPathFinding:
             temp_libs = []
             try:
                 injector = SeccompInjector.__new__(SeccompInjector)
-                
+
                 # 为每种语言创建临时库文件
                 languages = ["python", "nodejs", "java", "cpp"]
                 for lang in languages:
-                    lib_path = Path(self.temp_dir) / f"libseccomp_injector_{lang}.so"
+                    lib_path = (
+                        Path(self.temp_dir) / f"libseccomp_injector_{lang}.so"
+                    )
                     lib_path.touch()
                     temp_libs.append(lib_path)
-                
+
                 # 修改搜索路径以使用临时目录
                 with mock.patch.object(
-                    injector, 
-                    '_find_library_path',
-                    side_effect=lambda lang: str(Path(self.temp_dir) / f"libseccomp_injector_{lang}.so")
+                    injector,
+                    "_find_library_path",
+                    side_effect=lambda lang: str(
+                        Path(self.temp_dir) / f"libseccomp_injector_{lang}.so"
+                    ),
                 ):
                     for lang in languages:
                         path = injector._find_library_path(lang)
@@ -179,15 +183,13 @@ class TestSeccompInjectorLibraryPathFinding:
             # 创建临时库文件进行测试
             temp_lib = Path(self.temp_dir) / "libseccomp_injector.so"
             temp_lib.touch()
-            
+
             try:
                 injector = SeccompInjector.__new__(SeccompInjector)
-                
+
                 # 修改搜索路径以使用临时目录
                 with mock.patch.object(
-                    injector, 
-                    '_find_library_path',
-                    return_value=str(temp_lib)
+                    injector, "_find_library_path", return_value=str(temp_lib)
                 ):
                     path = injector._find_library_path()
                     assert "libseccomp_injector.so" in path
@@ -203,14 +205,12 @@ class TestSeccompInjectorLibraryPathFinding:
         """测试相对于模块的库路径查找"""
         with mock.patch("ctypes.CDLL"):
             injector = SeccompInjector.__new__(SeccompInjector)
-            
+
             # 创建一个模拟的路径，包含bpf目录
             mock_path = "/some/path/bpf/libseccomp_injector_python.so"
-            
+
             with mock.patch.object(
-                injector, 
-                '_find_library_path',
-                return_value=mock_path
+                injector, "_find_library_path", return_value=mock_path
             ):
                 path = injector._find_library_path("python")
                 # 路径应该包含bpf目录
@@ -284,9 +284,7 @@ class TestSeccompInjectorOperations:
                 language="python", library_path="/mock/path.so"
             )
 
-            with pytest.raises(
-                SeccompInjectionError, match="prctl.*failed"
-            ):
+            with pytest.raises(SeccompInjectionError, match="prctl.*failed"):
                 injector.inject_seccomp_profile(1000, 1000)
 
     @pytest.mark.skipif(
@@ -317,9 +315,7 @@ class TestSeccompInjectorOperations:
                 language="python", library_path="/mock/path.so"
             )
 
-            with pytest.raises(
-                SeccompInjectionError, match="prctl.*failed"
-            ):
+            with pytest.raises(SeccompInjectionError, match="prctl.*failed"):
                 injector.setup_no_new_privs()
 
     @pytest.mark.skipif(
@@ -385,9 +381,7 @@ class TestSeccompInjectorOperations:
                 language="python", library_path="/mock/path.so"
             )
 
-            with pytest.raises(
-                SeccompInjectionError, match="seccomp.*failed"
-            ):
+            with pytest.raises(SeccompInjectionError, match="seccomp.*failed"):
                 injector.apply_seccomp_filter()
 
 
@@ -402,7 +396,7 @@ class TestSeccompInjectorErrorHandling:
         with mock.patch("ctypes.CDLL") as mock_cdll:
             mock_lib = mock.MagicMock()
             mock_cdll.return_value = mock_lib
-            
+
             # 设置 mock 返回值
             def mock_get_error_description(code):
                 messages = {
@@ -415,9 +409,11 @@ class TestSeccompInjectorErrorHandling:
                     -6: b"Unsupported platform",
                 }
                 return messages.get(code, b"Unknown error")
-            
-            mock_lib.get_error_description.side_effect = mock_get_error_description
-            
+
+            mock_lib.get_error_description.side_effect = (
+                mock_get_error_description
+            )
+
             injector = SeccompInjector(
                 language="python", library_path="/mock/path.so"
             )
@@ -435,10 +431,10 @@ class TestSeccompInjectorErrorHandling:
         with mock.patch("ctypes.CDLL") as mock_cdll:
             mock_lib = mock.MagicMock()
             mock_cdll.return_value = mock_lib
-            
+
             # 设置 mock 返回未知错误
             mock_lib.get_error_description.return_value = b"Unknown error"
-            
+
             injector = SeccompInjector(
                 language="python", library_path="/mock/path.so"
             )
