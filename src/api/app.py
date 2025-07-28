@@ -2,7 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from starlette.middleware.base import BaseHTTPMiddleware
 
-from .routes import execute_router, health_router, plugins_router
+from .routes import execute_router, health_router
 
 # 创建FastAPI应用
 app = FastAPI(
@@ -35,7 +35,6 @@ app.add_middleware(RateLimitMiddleware)
 # 注册路由
 app.include_router(execute_router)
 app.include_router(health_router)
-app.include_router(plugins_router)
 
 
 @app.get("/")
