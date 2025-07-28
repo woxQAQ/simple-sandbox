@@ -7,10 +7,11 @@ SeccompInjector类的单元测试
 
 import os
 import sys
-import pytest
 import tempfile
 import unittest.mock as mock
 from pathlib import Path
+
+import pytest
 
 # 添加项目根目录到Python路径
 project_root = Path(__file__).parent.parent.parent
@@ -18,15 +19,15 @@ sys.path.insert(0, str(project_root))
 
 try:
     from src.security.injection.seccomp_wrapper import (
-        SeccompInjector,
-        SeccompInjectionError,
-        inject_seccomp_for_language,
-        SECCOMP_SUCCESS,
-        SECCOMP_ERROR_PRCTL,
-        SECCOMP_ERROR_SYSCALL,
-        SECCOMP_ERROR_PRIVILEGE,
-        SECCOMP_ERROR_MEMORY,
         ERROR_MESSAGES,
+        SECCOMP_ERROR_MEMORY,
+        SECCOMP_ERROR_PRCTL,
+        SECCOMP_ERROR_PRIVILEGE,
+        SECCOMP_ERROR_SYSCALL,
+        SECCOMP_SUCCESS,
+        SeccompInjectionError,
+        SeccompInjector,
+        inject_seccomp_for_language,
     )
 except ImportError as e:
     pytest.skip(

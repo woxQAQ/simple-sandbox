@@ -7,9 +7,9 @@
 - 其他平台: 运行跨平台兼容的测试
 """
 
-import sys
 import platform
 import subprocess
+import sys
 from pathlib import Path
 
 

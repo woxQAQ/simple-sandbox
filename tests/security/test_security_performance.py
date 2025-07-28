@@ -5,26 +5,27 @@
 测试SecurityManager和SeccompInjector在高负载和边界条件下的性能表现
 """
 
+import concurrent.futures
 import os
 import sys
-import time
-import pytest
 import tempfile
 import threading
-import concurrent.futures
+import time
 import unittest.mock as mock
 from pathlib import Path
+
+import pytest
 
 # 添加项目根目录到Python路径
 project_root = Path(__file__).parent.parent.parent
 sys.path.insert(0, str(project_root))
 
 try:
-    from src.security import SecurityManager, SecurityError
+    from src.security import SecurityError, SecurityManager
     from src.security.injection.seccomp_wrapper import (
-        SeccompInjector,
-        SeccompInjectionError,
         SECCOMP_SUCCESS,
+        SeccompInjectionError,
+        SeccompInjector,
     )
 except ImportError as e:
     pytest.skip(f"Security module not available: {e}", allow_module_level=True)

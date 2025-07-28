@@ -5,12 +5,13 @@ fmt:
 	@echo "Formatting code..."
 	@ruff check . --fix
 	@black .
+	@isort .
 
 # 构建安全组件
 build-security:
 	@echo "Building seccomp security components..."
 	@./scripts/build.sh
-	
+
 # 清理构建产物
 clean-security:
 	@echo "Cleaning security build artifacts..."

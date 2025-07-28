@@ -9,12 +9,12 @@ BPF模块测试
 4. 生成的动态库功能
 """
 
-import os
-import sys
 import json
-import tempfile
-import subprocess
+import os
 import platform
+import subprocess
+import sys
+import tempfile
 from pathlib import Path
 
 import pytest

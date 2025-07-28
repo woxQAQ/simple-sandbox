@@ -10,11 +10,12 @@
 5. BPF模块测试验证
 """
 
-import sys
-import subprocess
 import platform
-import yaml
+import subprocess
+import sys
 from pathlib import Path
+
+import yaml
 
 # 项目根目录
 PROJECT_ROOT = Path(__file__).parent.parent.parent

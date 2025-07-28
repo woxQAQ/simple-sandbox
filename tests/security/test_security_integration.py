@@ -7,10 +7,11 @@ security模块集成测试
 
 import os
 import sys
-import pytest
 import tempfile
 import unittest.mock as mock
 from pathlib import Path
+
+import pytest
 
 # 添加项目根目录到Python路径
 project_root = Path(__file__).parent.parent.parent
@@ -18,17 +19,17 @@ sys.path.insert(0, str(project_root))
 
 try:
     from src.security import (
-        SecurityManager,
-        SeccompInjector,
-        SecurityError,
-        SeccompInjectionError,
-        inject_seccomp_for_language,
-        create_secure_process,
-        get_default_security_manager,
-        SECCOMP_SUCCESS,
+        SECCOMP_ERROR_MEMORY,
         SECCOMP_ERROR_PRCTL,
         SECCOMP_ERROR_SYSCALL,
-        SECCOMP_ERROR_MEMORY,
+        SECCOMP_SUCCESS,
+        SeccompInjectionError,
+        SeccompInjector,
+        SecurityError,
+        SecurityManager,
+        create_secure_process,
+        get_default_security_manager,
+        inject_seccomp_for_language,
     )
 except ImportError as e:
     pytest.skip(f"Security module not available: {e}", allow_module_level=True)

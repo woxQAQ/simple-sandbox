@@ -7,8 +7,8 @@ seccomp注入器的Python包装器 - Linux专用
 import ctypes
 import platform
 import sys
-from typing import Optional
 from pathlib import Path
+from typing import Optional
 
 # 平台检查
 if not sys.platform.startswith("linux"):
