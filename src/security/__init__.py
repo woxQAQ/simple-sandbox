@@ -10,7 +10,7 @@ security模块 - 代码沙盒安全组件
 """
 
 from .syscalls.parser import SyscallConfigParser
-from .injection.seccomp_wrapper import (
+from src.security.injection.seccomp_wrapper import (
     SeccompInjector,
     SeccompInjectionError,
     inject_seccomp_for_language,

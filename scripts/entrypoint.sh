@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # 启动代码沙箱服务
 echo "Starting Code Sandbox..."

@@ -5,9 +5,11 @@ seccomp注入器的Python包装器 - Linux专用
 """
 
 import ctypes
+import platform
 import sys
 from typing import List, Optional
 from pathlib import Path
+from src.security.syscalls.parser import SyscallConfigParser
 
 # 平台检查
 if not sys.platform.startswith("linux"):
@@ -210,7 +212,7 @@ class SeccompInjector:
     @staticmethod
     def is_supported() -> bool:
         """检查当前平台是否支持seccomp"""
-        return True  # 此模块只在Linux上可用
+        return platform.system() == "Linux"  # 此模块只在Linux上可用
 
 
 # 便利函数
@@ -226,8 +228,6 @@ def inject_seccomp_for_language(
         gid: 目标组ID
         library_path: 共享库路径
     """
-    from ..syscalls.parser import SyscallConfigParser
-
     # 加载系统调用配置
     parser = SyscallConfigParser()
     syscalls = parser.get_syscalls_for_language(language)
@@ -241,13 +241,3 @@ def inject_seccomp_for_language(
     # 执行注入
     injector = SeccompInjector(library_path)
     injector.inject_seccomp_profile(syscalls, uid, gid)
-
-
-if __name__ == "__main__":
-    # 简单的测试
-    print("Seccomp is supported on this platform")
-    try:
-        injector = SeccompInjector()
-        print("Seccomp injector loaded successfully")
-    except Exception as e:
-        print(f"Failed to load seccomp injector: {e}")
