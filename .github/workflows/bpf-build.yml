@@ -121,7 +121,7 @@ jobs:
       uses: actions/checkout@v4
     
     - name: Download all artifacts
-      uses: actions/download-artifact@v3
+      uses: actions/download-artifact@v4
     
     - name: Set up Python
       uses: actions/setup-python@v4
@@ -184,7 +184,7 @@ jobs:
       uses: actions/checkout@v4
     
     - name: Download all artifacts
-      uses: actions/download-artifact@v3
+      uses: actions/download-artifact@v4
     
     - name: Create release structure
       run: |
@@ -287,7 +287,7 @@ jobs:
     
     steps:
     - name: Download release package
-      uses: actions/download-artifact@v3
+      uses: actions/download-artifact@v4
       with:
         name: seccomp-injector-release-${{ github.sha }}
     
