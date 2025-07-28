@@ -5,6 +5,7 @@ seccomp注入器的Python包装器 - Linux专用
 """
 
 import ctypes
+import os
 import platform
 import sys
 from pathlib import Path
@@ -64,6 +65,7 @@ class SeccompInjector:
         """
         self._lib = None
         self._language = language
+        self._library_path = None
         self._load_library(library_path)
         self._setup_function_signatures()
 
@@ -104,9 +106,18 @@ class SeccompInjector:
         """加载共享库"""
         if library_path is None:
             library_path = self._find_library_path(self._language)
+        elif os.path.isdir(library_path):
+            # 如果传入的是目录，根据语言构建完整的库路径
+            if self._language:
+                library_path = os.path.join(
+                    library_path, f"libseccomp_injector_{self._language}.so"
+                )
+            else:
+                library_path = os.path.join(library_path, "libseccomp_injector.so")
 
         try:
             self._lib = ctypes.CDLL(library_path)
+            self._library_path = library_path
         except OSError as e:
             raise SeccompInjectionError(
                 SECCOMP_ERROR_UNSUPPORTED,
@@ -155,9 +166,7 @@ class SeccompInjector:
         if not self._lib:
             raise SeccompInjectionError(SECCOMP_ERROR_UNSUPPORTED)
 
-        result = self._lib.drop_privileges(
-            ctypes.c_uint32(uid), ctypes.c_uint32(gid)
-        )
+        result = self._lib.drop_privileges(uid, gid)
         if result != SECCOMP_SUCCESS:
             raise SeccompInjectionError(result)
 
@@ -175,10 +184,7 @@ class SeccompInjector:
         if not self._lib:
             raise SeccompInjectionError(SECCOMP_ERROR_UNSUPPORTED)
 
-        result = self._lib.inject_seccomp_profile(
-            ctypes.c_uint32(uid),
-            ctypes.c_uint32(gid),
-        )
+        result = self._lib.inject_seccomp_profile(uid, gid)
         if result != SECCOMP_SUCCESS:
             raise SeccompInjectionError(result)
 
@@ -187,10 +193,20 @@ class SeccompInjector:
         if not self._lib:
             return ERROR_MESSAGES.get(error_code, "Unknown error")
 
-        desc = self._lib.get_error_description(ctypes.c_int(error_code))
+        desc = self._lib.get_error_description(error_code)
         if desc:
             return desc.decode("utf-8")
         return "Unknown error"
+
+    @property
+    def library_path(self) -> Optional[str]:
+        """获取加载的库路径"""
+        return self._library_path
+
+    @property
+    def language(self) -> Optional[str]:
+        """获取编程语言"""
+        return self._language
 
     @staticmethod
     def is_supported() -> bool:
@@ -212,5 +228,5 @@ def inject_seccomp_for_language(
         library_path: 共享库路径
     """
     # 执行注入
-    injector = SeccompInjector(library_path, language)
+    injector = SeccompInjector(library_path=library_path, language=language)
     injector.inject_seccomp_profile(uid, gid)

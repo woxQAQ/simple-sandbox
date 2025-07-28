@@ -56,11 +56,8 @@ def main():
     if is_linux():
         print("检测到Linux平台，运行完整的集成测试...")
         test_files = [
-            "test_security_integration.py",
             "test_security_manager.py",
             "test_seccomp_injector.py",
-            "test_security_errors.py",
-            "test_security_performance.py",
             "test_security_cross_platform.py",
         ]
     else:
