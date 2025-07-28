@@ -37,7 +37,6 @@ NODEJS_TARGET = libseccomp_injector_nodejs.$(LIB_EXT)
 
 # 构建目录
 BUILD_DIR = ../../../build/lib
-INSTALL_DIR = /usr/local/lib
 
 # 默认目标
 all: $(PYTHON_TARGET) $(NODEJS_TARGET)
@@ -85,18 +84,6 @@ test-compile: $(OBJS_PYTHON) $(OBJS_NODEJS)
 python: $(PYTHON_TARGET)
 nodejs: $(NODEJS_TARGET)
 
-# 安装
-install: $(PYTHON_TARGET) $(NODEJS_TARGET)
-	sudo cp $(BUILD_DIR)/$(PYTHON_TARGET) $(INSTALL_DIR)/
-	sudo cp $(BUILD_DIR)/$(NODEJS_TARGET) $(INSTALL_DIR)/
-	sudo ldconfig
-
-# 卸载
-uninstall:
-	sudo rm -f $(INSTALL_DIR)/$(PYTHON_TARGET)
-	sudo rm -f $(INSTALL_DIR)/$(NODEJS_TARGET)
-	sudo ldconfig
-
 # 显示构建信息
 info:
 	@echo "Platform: $(UNAME_S)"
@@ -121,8 +108,6 @@ help:
 	@echo "  python       - Build Python shared library only"
 	@echo "  nodejs       - Build Node.js shared library only"
 	@echo "  clean        - Remove build artifacts"
-	@echo "  install      - Install shared libraries"
-	@echo "  uninstall    - Uninstall shared libraries"
 	@echo "  test-compile - Test compilation without linking"
 	@echo "  info         - Show build configuration"
 	@echo "  check-deps   - Check build dependencies"

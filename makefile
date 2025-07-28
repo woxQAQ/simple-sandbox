@@ -1,4 +1,4 @@
-.PHONY: fmt build-security test-security clean-security install-security clean-security build clean-all help
+.PHONY: fmt build-security test-security clean-security build clean-all help
 
 # 代码格式化
 fmt:
@@ -36,7 +36,6 @@ help:
 	@echo "  build-security                - Build seccomp security components"
 	@echo "  test-security                 - Test security components"
 	@echo "  clean-security                - Clean security build artifacts"
-	@echo "  install-security              - Install security components to system (Linux only)"
 	@echo "  build                    	   - Complete build including security"
 	@echo "  clean-all                     - Complete cleanup"
 	@echo "  help                          - Show this help message"
