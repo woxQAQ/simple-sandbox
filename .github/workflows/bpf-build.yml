@@ -102,7 +102,7 @@ jobs:
         fi
     
     - name: Upload library artifact
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: libseccomp-${{ matrix.language }}-${{ matrix.architecture }}-${{ env.BUILD_TYPE }}
         path: |
@@ -260,7 +260,7 @@ jobs:
         ls -lh seccomp-injector-libraries.tar.gz
     
     - name: Upload release package
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: seccomp-injector-release-${{ github.sha }}
         path: |
