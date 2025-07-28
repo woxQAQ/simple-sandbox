@@ -2,10 +2,8 @@
 # Multi-stage build for Linux containers
 
 # Build stage
-ARG DEBIAN_MIRROR="http://deb.debian.org/debian testing main"
-ARG NODEJS_VERSION=v20.11.0
-ARG TARGETARCH
 FROM python:3.11.13-slim-bookworm AS builder
+ARG DEBIAN_MIRROR="http://deb.debian.org/debian testing main"
 WORKDIR /app
 COPY pyproject.toml uv.lock ./
 COPY scripts/ ./scripts/
@@ -40,7 +38,8 @@ RUN echo "deb ${DEBIAN_MIRROR}" > /etc/apt/sources.list && \
     && apt clean \
     && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 
-RUN ./scripts/install_nodejs.sh ${NODEJS_VERSION} ${TARGETARCH}
+COPY scripts/ /app/scripts/
+RUN /app/scripts/install_nodejs.sh ${NODEJS_VERSION} ${TARGETARCH}
 
 # copy language runtime from builder
 COPY --from=builder /opt/venv /opt/venv
