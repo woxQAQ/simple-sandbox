@@ -8,9 +8,11 @@ ARG TARGETARCH
 FROM python:3.11.13-slim-bookworm AS builder
 WORKDIR /app
 COPY pyproject.toml uv.lock ./
+COPY scripts/ ./scripts/
+COPY src/ ./src/
 
 # 安装构建依赖
-RUN echo "deb ${DEBIAN_MIRROR}" > /etc/apt/sources.list \
+RUN echo "deb ${DEBIAN_MIRROR}" > /etc/apt/sources.list && \
     apt update && apt install -y --no-install-recommends \
     build-essential \
     curl \
@@ -21,12 +23,17 @@ RUN echo "deb ${DEBIAN_MIRROR}" > /etc/apt/sources.list \
     && apt clean \
     && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 
-RUN ./build.sh
+RUN ./scripts/build.sh
 
 # Final Stage
 FROM python:3.11.13-slim
 
-RUN echo "deb ${DEBIAN_MIRROR}" > /etc/apt/sources.list \
+# 重新声明ARG变量
+ARG DEBIAN_MIRROR="http://deb.debian.org/debian testing main"
+ARG NODEJS_VERSION=v20.11.0
+ARG TARGETARCH
+
+RUN echo "deb ${DEBIAN_MIRROR}" > /etc/apt/sources.list && \
     apt update && apt install -y --no-install-recommends \
     wget \
     curl \
