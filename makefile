@@ -1,3 +1,9 @@
+IMAGE ?= "woxQAQ/simple-sandbox"
+REGISTRY ?= "docker.io"
+VERSION ?= "latest"
+BUILDX_PLATFORM ?= "linux/amd64,linux/arm64"
+BUILDX_ARGS ?= --sbom=false --provenance=false
+
 .PHONY: fmt build-security test-security clean-security build clean-all help
 
 # 代码格式化
@@ -24,6 +30,33 @@ build: fmt build-security
 # 完整清理
 clean-all: clean-security
 	@echo "Complete cleanup finished"
+
+########################
+# 		build          #
+########################
+
+.PHONY: setup-builder clean-builder
+setup-builder:
+	@if ! docker buildx inspect multi-platform >/dev/null 2>&1; then \
+		docker buildx create --name multi-platform --use --driver docker-container --bootstrap; \
+	else \
+		docker buildx use multi-platform; \
+	fi
+
+clean-builder:
+	@if docker buildx inspect multi-platform >/dev/null 2>&1; then \
+		docker buildx rm multi-platform; \
+	fi
+
+build-image: setup-builder version
+	docker buildx build -t $(REGISTRY)/$(IMAGE):$(VERSION) \
+		--platform $(BUILDX_PLATFORM) $(BUILDX_ARGS) \
+	-f ./Dockerfile .
+
+build-image-and-push: setup-builder version
+	docker buildx build -t $(REGISTRY)/$(IMAGE):$(VERSION) \
+		--platform $(BUILDX_PLATFORM) $(BUILDX_ARGS) --push \
+	-f ./Dockerfile .
 
 # 帮助信息
 help:
