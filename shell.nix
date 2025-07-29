@@ -18,6 +18,9 @@ pkgs.mkShell {
       fi
 
       source "${venvDir}/bin/activate"
+      echo "sync uv dependencies"
+      uv sync --dev
+      uv sync
       echo "virtualenv activate at ${venvDir}"
     '';
 }
