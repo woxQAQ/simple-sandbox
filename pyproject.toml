@@ -5,10 +5,6 @@ description = "A secure code execution sandbox with multi-language support"
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
-    "fastapi>=0.104.0",
-    "uvicorn[standard]>=0.24.0",
-    "pydantic>=2.5.0",
-    "python-multipart>=0.0.6",
     "astor>=0.8.1",
 ]
 
