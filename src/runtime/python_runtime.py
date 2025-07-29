@@ -24,7 +24,7 @@ class PythonRuntime(LanguageRuntime):
         self, code: str, input_data: str = "", env_vars: Dict[str, str] = None
     ) -> str:
         """使用扩展系统预处理Python代码"""
-        pass
+        return code
 
     def get_command(self, filename: str) -> List[str]:
         """获取Python执行命令"""
