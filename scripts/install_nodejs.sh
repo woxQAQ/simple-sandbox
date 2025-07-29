@@ -12,8 +12,6 @@ else
     exit 1
 fi
 
+mkdir -p /opt/node
 wget -O /opt/node/node-${NODEJS_VERSION}-${NODEJS_ARCH}.tar.xz \
        ${NODEJS_MIRROR}/${NODEJS_VERSION}/node-${NODEJS_VERSION}-${NODEJS_ARCH}.tar.xz
-
-export NODE_TAR_XZ="/opt/node/node-${NODEJS_VERSION}-${NODEJS_ARCH}.tar.xz"
-export NODE_DIR="/opt/node/node-${NODEJS_VERSION}-${NODEJS_ARCH}"

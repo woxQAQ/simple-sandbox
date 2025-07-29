@@ -43,11 +43,11 @@ RUN chmod +x /app/scripts/*.sh && /app/scripts/install_nodejs.sh ${NODEJS_VERSIO
 
 # copy language runtime from builder
 COPY --from=builder /opt/venv /opt/venv
-COPY --from=builder /app/build/lib /app/build/lib
 
 ENV PATH="/opt/venv/bin:$PATH"
 
 COPY . /app
+COPY --from=builder /app/build/lib /app/build/lib
 WORKDIR /app
 
 RUN . /opt/venv/bin/activate && pip install --no-deps -e . && \
