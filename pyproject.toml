@@ -40,6 +40,9 @@ dev = [
     "safety>=3.0.0",
     "ruff>=0.12.5",
     "pytest-cov>=6.2.1",
+    "docker>=7.1.0",
+    "pytest-html>=4.1.1",
+    "requests>=2.32.4",
 ]
 
 [tool.mypy]
