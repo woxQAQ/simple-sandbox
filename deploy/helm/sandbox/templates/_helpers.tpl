@@ -7,8 +7,6 @@ Expand the name of the chart.
 
 {{/*
 Create a default fully qualified app name.
-We truncate at 63 chars because some Kubernetes name fields are limited to this (by the DNS naming spec).
-If release name contains chart name it will be used as a full name.
 */}}
 {{- define "sandbox.fullname" -}}
 {{- if .Values.fullnameOverride }}
@@ -51,12 +49,47 @@ app.kubernetes.io/instance: {{ .Release.Name }}
 {{- end }}
 
 {{/*
-Create the name of the service account to use
+Environment variables for the sandbox application
 */}}
-{{- define "sandbox.serviceAccountName" -}}
-{{- if .Values.serviceAccount.create }}
-{{- default (include "sandbox.fullname" .) .Values.serviceAccount.name }}
-{{- else }}
-{{- default "default" .Values.serviceAccount.name }}
+{{- define "sandbox.envVars" -}}
+- name: HOST
+  value: {{ .Values.app.host | quote }}
+- name: PORT
+  value: {{ .Values.app.port | quote }}
+- name: DEBUG
+  value: {{ .Values.app.debug | quote }}
+- name: VERBOSE
+  value: {{ .Values.app.verbose | quote }}
 {{- end }}
+
+{{/*
+Network policy rules
+*/}}
+{{- define "sandbox.networkPolicyRules" -}}
+# Allow traffic from same namespace
+- from:
+    - namespaceSelector:
+        matchLabels:
+          name: {{ .Release.Namespace }}
+# Allow traffic on service port
+- ports:
+    - protocol: TCP
+      port: {{ .Values.service.port }}
+# Allow DNS traffic
+- to: []
+  ports:
+    - protocol: UDP
+      port: 53
+    - protocol: TCP
+      port: 53
+# Allow Kubernetes API traffic
+- to:
+    - namespaceSelector:
+        matchLabels:
+          kubernetes.io/metadata.name: kube-system
+  ports:
+    - protocol: TCP
+      port: 443
+    - protocol: TCP
+      port: 6443
 {{- end }}
