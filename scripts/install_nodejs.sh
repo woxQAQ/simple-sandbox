@@ -18,3 +18,17 @@ wget -O /opt/node/node-${NODEJS_VERSION}-${NODEJS_ARCH}.tar.xz \
 
 cd /opt/node
 tar -xf node-${NODEJS_VERSION}-${NODEJS_ARCH}.tar.xz
+
+NODEJS_DIR="node-${NODEJS_VERSION}-${NODEJS_ARCH}"
+mv "$NODEJS_DIR" nodejs
+rm node-${NODEJS_VERSION}-${NODEJS_ARCH}.tar.xz
+
+# 添加Node.js到PATH
+ln -sf /opt/node/nodejs/bin/node /usr/local/bin/node
+ln -sf /opt/node/nodejs/bin/npm /usr/local/bin/npm
+
+# 安装Node.js transformer依赖
+cd /app/src/runtime/transformer/nodejs && npm install
+
+echo "Node.js setup completed:"
+/opt/node/nodejs/bin/node --version
