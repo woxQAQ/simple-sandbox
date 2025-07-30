@@ -23,6 +23,12 @@ RUN echo "deb ${DEBIAN_MIRROR}" > /etc/apt/sources.list && \
 
 RUN ./scripts/build.sh
 
+# build transformer package
+FROM node:20.11.0-alpine as node_builder
+
+COPY src/ ./src/
+RUN cd src/runtime/transformer/nodejs && npm install
+
 # Final Stage
 FROM python:3.11.13-slim
 
@@ -48,6 +54,7 @@ COPY --from=builder /opt/venv /opt/venv
 ENV PATH="/opt/venv/bin:/opt/node/bin:$PATH"
 
 COPY --from=builder /app/build/lib /app/build/lib
+COPY --from=node_builder /src/runtime/transformer/nodejs/node_modules /app/src/runtime/transformer/nodejs/node_modules
 WORKDIR /app
 
 RUN . /opt/venv/bin/activate && pip install --no-deps -e . && \
