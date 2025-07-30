@@ -1,4 +1,8 @@
 #!/usr/bin/env bash
+set -o errexit
+set -o pipefail
+set -o nounset
+
 NODEJS_VERSION=$1
 TARGETARCH=$2
 NODEJS_MIRROR="https://nodejs.org/dist"
@@ -13,11 +17,11 @@ else
 fi
 
 mkdir -p /opt/node
-wget -O /opt/node/node-${NODEJS_VERSION}-${NODEJS_ARCH}.tar.xz \
+wget -O /opt/node/node-${NODEJS_VERSION}-linux-${NODEJS_ARCH}.tar.xz \
        ${NODEJS_MIRROR}/${NODEJS_VERSION}/node-${NODEJS_VERSION}-linux-${NODEJS_ARCH}.tar.xz
 
 cd /opt/node
-tar -xJf node-${NODEJS_VERSION}-${NODEJS_ARCH}.tar.xz
+tar -xvf node-${NODEJS_VERSION}-linux-${NODEJS_ARCH}.tar.xz
 
 NODEJS_DIR="node-${NODEJS_VERSION}-${NODEJS_ARCH}"
 mv "$NODEJS_DIR" nodejs
@@ -28,11 +32,7 @@ ln -sf /opt/node/nodejs/bin/node /usr/local/bin/node
 ln -sf /opt/node/nodejs/bin/npm /usr/local/bin/npm
 
 # 安装Node.js transformer依赖
-if [ -d "/app/src/runtime/transformer/nodejs" ]; then
-    cd /app/src/runtime/transformer/nodejs && npm install
-else
-    echo "Warning: Node.js transformer directory not found, skipping npm install"
-fi
+cd /app/src/runtime/transformer/nodejs && npm install
 
 echo "Node.js setup completed:"
 /opt/node/nodejs/bin/node --version
