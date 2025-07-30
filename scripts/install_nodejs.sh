@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 NODEJS_VERSION=$1
 TARGETARCH=$2
-NODEJS_MIRROR="https://npmmirror.com/mirrors/node"
+NODEJS_MIRROR="https://registry.npmmirror.com/mirrors/node"
 
 if [ "$TARGETARCH" = "amd64" ]; then
     NODEJS_ARCH="x64"
