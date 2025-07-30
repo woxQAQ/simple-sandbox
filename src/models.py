@@ -26,7 +26,7 @@ class ExecutionRequest:
     input_data: str = ""
     env_vars: Optional[Dict[str, str]] = None
     timeout: Optional[float] = None
-    
+
     def __post_init__(self):
         if self.env_vars is None:
             self.env_vars = {}
