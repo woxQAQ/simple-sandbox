@@ -41,12 +41,14 @@ RUN echo "deb ${DEBIAN_MIRROR}" > /etc/apt/sources.list && \
 COPY scripts/ /app/scripts/
 RUN chmod +x /app/scripts/*.sh && /app/scripts/install_nodejs.sh ${NODEJS_VERSION} ${TARGETARCH}
 
+
 # copy language runtime from builder
 COPY --from=builder /opt/venv /opt/venv
 
 ENV PATH="/opt/venv/bin:$PATH"
 
 COPY . /app
+RUN cd /app/src/runtime/transformer/nodejs && npm install
 COPY --from=builder /app/build/lib /app/build/lib
 WORKDIR /app
 

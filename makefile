@@ -85,12 +85,12 @@ version:
 build-image: setup-builder version
 	docker buildx build -t $(REGISTRY)/$(IMAGE):$(VERSION) \
 		--platform $(BUILDX_PLATFORM) $(BUILDX_ARGS) \
-	-f ./Dockerfile .
+	-f ./docker/Dockerfile .
 
 build-image-and-push: setup-builder version
 	docker buildx build -t $(REGISTRY)/$(IMAGE):$(VERSION) \
 		--platform $(BUILDX_PLATFORM) $(BUILDX_ARGS) --push \
-	-f ./Dockerfile .
+	-f ./docker/Dockerfile .
 
 # 帮助信息
 help:
