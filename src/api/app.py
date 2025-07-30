@@ -99,8 +99,6 @@ class SimpleHTTPRequestHandler(BaseHTTPRequestHandler):
 
             language = request_data["language"]
             code = request_data["code"]
-            timeout = request_data.get("timeout", 30)
-            memory_limit = request_data.get("memory_limit", 128)
             input_data = request_data.get("input_data", "")
             env_vars = request_data.get("environment_variables")
 
