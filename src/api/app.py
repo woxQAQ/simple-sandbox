@@ -113,8 +113,6 @@ class SimpleHTTPRequestHandler(BaseHTTPRequestHandler):
             # 执行代码
             result = runtime.execute(
                 code=code,
-                timeout=timeout,
-                memory_limit=memory_limit,
                 input_data=input_data,
                 env_vars=env_vars,
             )

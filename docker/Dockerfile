@@ -24,7 +24,7 @@ RUN echo "deb ${DEBIAN_MIRROR}" > /etc/apt/sources.list && \
 RUN ./scripts/build.sh
 
 # build transformer package
-FROM node:20.11.0-alpine as node_builder
+FROM node:20.11.0-alpine AS node_builder
 
 COPY src/ ./src/
 RUN cd src/runtime/transformer/nodejs && npm install
