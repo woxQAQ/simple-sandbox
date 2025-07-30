@@ -35,6 +35,7 @@ RUN echo "deb ${DEBIAN_MIRROR}" > /etc/apt/sources.list && \
     apt update && apt install -y --no-install-recommends \
     wget \
     curl \
+    xz-utils \
     && apt clean \
     && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 
