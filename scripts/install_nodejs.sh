@@ -14,7 +14,7 @@ fi
 
 mkdir -p /opt/node
 wget -O /opt/node/node-${NODEJS_VERSION}-${NODEJS_ARCH}.tar.xz \
-       ${NODEJS_MIRROR}/${NODEJS_VERSION}/node-${NODEJS_VERSION}-${NODEJS_ARCH}.tar.xz
+       ${NODEJS_MIRROR}/${NODEJS_VERSION}/node-${NODEJS_VERSION}-linux-${NODEJS_ARCH}.tar.xz
 
 cd /opt/node
 tar -xJf node-${NODEJS_VERSION}-${NODEJS_ARCH}.tar.xz
