@@ -20,6 +20,8 @@ if [ ! -d "/opt/node/nodejs" ]; then
 
         # 添加Node.js到PATH
         ln -sf /opt/node/nodejs/bin/node /usr/local/bin/node
+        ln -sf /opt/node/nodejs/bin/npm /usr/local/bin/npm
+        cd /app/src/runtime/transformer/nodejs && npm install
 
         echo "Node.js setup completed:"
         /opt/node/nodejs/bin/node --version

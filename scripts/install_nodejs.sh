@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 NODEJS_VERSION=$1
 TARGETARCH=$2
-NODEJS_MIRROR="https://nodejs.org/dist"
+NODEJS_MIRROR="https://npmmirror.com/mirrors/node"
 
 if [ "$TARGETARCH" = "amd64" ]; then
     NODEJS_ARCH="x64"
@@ -15,5 +15,6 @@ fi
 mkdir -p /opt/node
 wget -O /opt/node/node-${NODEJS_VERSION}-${NODEJS_ARCH}.tar.xz \
        ${NODEJS_MIRROR}/${NODEJS_VERSION}/node-${NODEJS_VERSION}-${NODEJS_ARCH}.tar.xz
-tar -xf /opt/node/node-${NODEJS_VERSION}-${NODEJS_ARCH}.tar.xz -C /opt/node --strip-components=1
-rm /opt/node/node-${NODEJS_VERSION}-${NODEJS_ARCH}.tar.xz
+
+cd /opt/node
+tar -xf node-${NODEJS_VERSION}-${NODEJS_ARCH}.tar.xz
