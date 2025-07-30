@@ -39,6 +39,7 @@ dev = [
     "bandit>=1.7.5",
     "safety>=3.0.0",
     "ruff>=0.12.5",
+    "pytest-cov>=6.2.1",
 ]
 
 [tool.mypy]

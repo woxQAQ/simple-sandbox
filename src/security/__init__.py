@@ -58,8 +58,8 @@ class SecurityManager:
     提供语言特定的seccomp安全策略管理，使用编译时确定的系统调用列表
     """
 
-    # 支持的编程语言列表
-    SUPPORTED_LANGUAGES = ["python", "nodejs"]
+    # 支持的编程语言列表（内部使用）
+    _SUPPORTED_LANGUAGES = ["python", "nodejs"]
 
     def __init__(self, library_dir: str = None):
         """
@@ -81,13 +81,13 @@ class SecurityManager:
         Returns:
             SeccompInjector: 语言特定的注入器实例
         """
-        if language not in self.SUPPORTED_LANGUAGES:
+        if language not in self._SUPPORTED_LANGUAGES:
             raise SecurityError(f"Unsupported language: {language}")
 
         if language not in self._injectors:
             try:
                 self._injectors[language] = SeccompInjector(
-                    language, self.library_dir
+                    language=language, library_path=self.library_dir
                 )
             except Exception as e:
                 raise SecurityError(
@@ -95,10 +95,6 @@ class SecurityManager:
                 )
 
         return self._injectors[language]
-
-    def get_supported_languages(self):
-        """获取支持的编程语言列表"""
-        return self.SUPPORTED_LANGUAGES.copy()
 
     def is_seccomp_supported(self):
         """检查当前平台是否支持seccomp"""

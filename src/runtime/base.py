@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
 from typing import Dict, List
 
-from .models import ExecutionResult, ResourceLimits
+from .models import ExecutionResult
 
 
 class LanguageRuntime(ABC):
@@ -14,8 +14,6 @@ class LanguageRuntime(ABC):
     def execute(
         self,
         code: str,
-        timeout: int,
-        memory_limit: int,
         input_data: str = "",
         env_vars: Dict[str, str] | None = None,
     ) -> ExecutionResult:
@@ -31,10 +29,6 @@ class LanguageRuntime(ABC):
     def get_default_filename(self) -> str:
         """返回默认文件名"""
         pass
-
-    def get_resource_limits(self) -> ResourceLimits:
-        """获取资源限制配置"""
-        return ResourceLimits()
 
     def preprocess_code(self, code: str) -> str:
         """预处理代码（用于特殊处理，如matplotlib）"""

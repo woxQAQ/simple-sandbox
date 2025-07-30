@@ -4,7 +4,9 @@
  */
 
 import { parse } from 'acorn';
-import { ConsolePlugin, ImportPlugin } from '../../plugins/nodejs';
+import ConsolePlugin from '../../extensions/plugins/nodejs/console_plugin.js';
+import ImportPlugin from '../../extensions/plugins/nodejs/import_plugin.js';
+import ProcessPlugin from '../../extensions/plugins/nodejs/process_plugin.js';
 /**
  * 获取所有可用的插件
  * @returns {Array} - 插件列表
@@ -12,7 +14,8 @@ import { ConsolePlugin, ImportPlugin } from '../../plugins/nodejs';
 function getPlugins() {
     return [
         new ConsolePlugin(),
-        new ImportPlugin()
+        new ImportPlugin(),
+        new ProcessPlugin()
     ];
 }
 /**
@@ -23,16 +26,16 @@ function getPlugins() {
  */
 function applyPlugins(ast, plugins) {
     let enhancementCode = '';
-    
+
     // 按优先级排序
     const sortedPlugins = plugins.sort((a, b) => b.priority - a.priority);
-    
+
     for (const plugin of sortedPlugins) {
         if (plugin.shouldTransform && plugin.shouldTransform(ast)) {
             enhancementCode += plugin.generateEnhancementCode();
         }
     }
-    
+
     return enhancementCode;
 }
 /**
@@ -67,9 +70,16 @@ function transformCode(sourceCode, options = {}) {
 /**
  * 命令行接口
  */
-if (require.main === module) {
-    const fs = require('fs');
-    const input = JSON.parse(fs.readFileSync(0, 'utf8'));
+if (import.meta.url === `file://${process.argv[1]}`) {
+    const input = JSON.parse(await new Promise((resolve) => {
+        let data = '';
+        process.stdin.on('data', (chunk) => {
+            data += chunk;
+        });
+        process.stdin.on('end', () => {
+            resolve(data);
+        });
+    }));
 
     const result = transformCode(input.code, input.options || {});
 

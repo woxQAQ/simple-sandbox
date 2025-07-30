@@ -55,7 +55,7 @@ int inject_seccomp_profile(uid_t uid, gid_t gid);
  * @param error_code 错误码
  * @return 错误描述字符串
  */
-const char* get_error_description(int error_code);
+const char *get_error_description(int error_code);
 
 #ifdef __cplusplus
 }

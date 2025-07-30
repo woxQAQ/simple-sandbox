@@ -5,8 +5,7 @@ Matplotlib增强插件
 
 import ast
 
-from src.runtime.extensions.transformer import (
-    PythonASTContext,
+from src.runtime.transformer.python import (
     PythonASTPlugin,
 )
 
@@ -17,9 +16,7 @@ class MatplotlibASTPlugin(PythonASTPlugin):
     def __init__(self):
         super().__init__("matplotlib_ast", priority=95)
 
-    def should_transform(
-        self, node: ast.AST, context: PythonASTContext
-    ) -> bool:
+    def should_transform(self, node: ast.AST) -> bool:
         """检测matplotlib导入"""
         if isinstance(node, ast.Import):
             return any(
@@ -31,7 +28,7 @@ class MatplotlibASTPlugin(PythonASTPlugin):
             return node.module and "matplotlib" in node.module
         return False
 
-    def transform(self, node: ast.AST, context: PythonASTContext) -> ast.AST:
+    def transform(self, node: ast.AST) -> ast.AST:
         """添加matplotlib配置"""
         if not isinstance(node, (ast.Import, ast.ImportFrom)):
             return node

@@ -4,8 +4,10 @@
 
 import ConsolePlugin from './console_plugin';
 import ImportPlugin from './import_plugin';
+import ProcessPlugin from './process_plugin';
 
 export default {
     ConsolePlugin,
-    ImportPlugin
+    ImportPlugin,
+    ProcessPlugin
 };

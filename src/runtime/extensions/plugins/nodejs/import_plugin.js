@@ -45,14 +45,21 @@ class ImportPlugin {
      * @returns {string} - 增强代码
      */
     generateEnhancementCode() {
-        return `// === 增强的模块加载日志 ===
+        return `// === 增强的模块加载日志和安全检查 ===
 const originalRequire = typeof require !== 'undefined' ? require : null;
 if (originalRequire) {
-    global.require = function(id) {
+    require = function(id) {
         const start = Date.now();
         const module = originalRequire(id);
         const duration = Date.now() - start;
         console.log(\`[\${new Date().toISOString()}] Loaded module: \${id} (\${duration}ms)\`);
+        
+        // 危险模块警告
+        const dangerousModules = ["fs", "child_process", "cluster", "worker_threads"];
+        if (dangerousModules.includes(id)) {
+            console.warn(\`Warning: Module '\${id}' is restricted in sandbox environment\`);
+        }
+        
         return module;
     };
 }

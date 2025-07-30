@@ -1,17 +1,16 @@
 import ast
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from typing import Any, Dict, List, Optional
+from typing import List
+
+import astor
 
 
 @dataclass
 class PythonASTContext:
     """Python AST转换上下文"""
 
-    filename: str
     source_code: str
-    user_id: str
-    metadata: Dict[str, Any]
 
 
 class PythonASTPlugin(ABC):
@@ -22,27 +21,23 @@ class PythonASTPlugin(ABC):
         self.priority = priority
 
     @abstractmethod
-    def should_transform(
-        self, node: ast.AST, context: PythonASTContext
-    ) -> bool:
+    def should_transform(self, node: ast.AST) -> bool:
         """判断是否应该应用此插件"""
         pass
 
     @abstractmethod
-    def transform(self, node: ast.AST, context: PythonASTContext) -> ast.AST:
+    def transform(self, node: ast.AST) -> ast.AST:
         """转换AST节点"""
         pass
 
-    def visit(self, tree: ast.AST, context: PythonASTContext) -> ast.AST:
+    def visit(self, tree: ast.AST) -> ast.AST:
         """访问并转换整个AST树"""
-        return self._visit_recursive(tree, context)
+        return self._visit_recursive(tree)
 
-    def _visit_recursive(
-        self, node: ast.AST, context: PythonASTContext
-    ) -> ast.AST:
+    def _visit_recursive(self, node: ast.AST) -> ast.AST:
         """递归访问AST节点"""
-        if self.should_transform(node, context):
-            node = self.transform(node, context)
+        if self.should_transform(node):
+            node = self.transform(node)
 
         # 递归处理子节点
         for field, value in ast.iter_fields(node):
@@ -50,13 +45,13 @@ class PythonASTPlugin(ABC):
                 new_list = []
                 for item in value:
                     if isinstance(item, ast.AST):
-                        new_item = self._visit_recursive(item, context)
+                        new_item = self._visit_recursive(item)
                         new_list.append(new_item)
                     else:
                         new_list.append(item)
                 setattr(node, field, new_list)
             elif isinstance(value, ast.AST):
-                new_value = self._visit_recursive(value, context)
+                new_value = self._visit_recursive(value)
                 setattr(node, field, new_value)
 
         return node
@@ -67,12 +62,9 @@ class PythonASTTransformer(ast.NodeTransformer):
 
     def __init__(self, plugins: List[PythonASTPlugin]):
         self.plugins = sorted(plugins, key=lambda p: p.priority)
-        self.context: Optional[PythonASTContext] = None
 
-    def transform(self, code: str, context: PythonASTContext) -> str:
+    def transform(self, code: str, context: PythonASTContext = None) -> str:
         """转换代码"""
-        self.context = context
-
         try:
             tree = ast.parse(code)
         except SyntaxError:
@@ -80,9 +72,11 @@ class PythonASTTransformer(ast.NodeTransformer):
 
         # 应用所有插件
         for plugin in self.plugins:
-            tree = plugin.visit(tree, context)
+            try:
+                tree = plugin.visit(tree)
+            except Exception:
+                # 插件异常时跳过该插件
+                continue
 
         # 生成代码
-        import astor
-
         return astor.to_source(tree)

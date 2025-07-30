@@ -1,3 +1,5 @@
-from runtime_ast_manager import transform_ast_code
+"""
+语言运行时扩展模块
+"""
 
-__all__ = ["transform_ast_code"]
+__all__ = []

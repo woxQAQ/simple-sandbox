@@ -1,6 +1,5 @@
 import json
 import logging
-import subprocess
 import time
 from enum import Enum
 from http.server import BaseHTTPRequestHandler, HTTPServer
@@ -34,8 +33,6 @@ class SimpleHTTPRequestHandler(BaseHTTPRequestHandler):
             self._handle_root()
         elif self.path == "/api/v1/health":
             self._handle_health()
-        elif self.path == "/api/v1/languages":
-            self._handle_languages()
         else:
             self._handle_404()
 
@@ -70,56 +67,9 @@ class SimpleHTTPRequestHandler(BaseHTTPRequestHandler):
 
     def _handle_health(self):
         """处理健康检查"""
-        # 获取Python版本
-        python_version = (
-            subprocess.run(
-                ["python3", "--version"], capture_output=True, text=True
-            )
-            .stdout.strip()
-            .replace("Python ", "")
-        )
-
-        # 获取Node.js版本
-        node_version_result = subprocess.run(
-            ["node", "--version"], capture_output=True, text=True
-        )
-        node_version = "unknown"
-        if node_version_result.returncode == 0:
-            node_version = node_version_result.stdout.strip().replace("v", "")
-
         response = {
             "status": "healthy",
             "timestamp": time.strftime("%Y-%m-%d %H:%M:%S"),
-            "supported_languages": [
-                {
-                    "name": "python",
-                    "version": python_version,
-                    "extensions": [".py", ".pyw"],
-                },
-                {
-                    "name": "nodejs",
-                    "version": node_version,
-                    "extensions": [".js", ".mjs", ".cjs"],
-                },
-            ],
-        }
-        self._send_json_response(response)
-
-    def _handle_languages(self):
-        """处理支持的语言列表"""
-        response = {
-            "languages": [
-                {
-                    "name": "python",
-                    "display_name": "Python",
-                    "extensions": [".py", ".pyw"],
-                },
-                {
-                    "name": "nodejs",
-                    "display_name": "Node.js",
-                    "extensions": [".js", ".mjs", ".cjs"],
-                },
-            ]
         }
         self._send_json_response(response)
 

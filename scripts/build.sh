@@ -32,18 +32,18 @@ log_error() {
 # 检查操作系统 - 仅支持Linux
 check_platform() {
     log_info "Checking platform compatibility..."
-    
+
     if [ "$(uname -s)" != "Linux" ]; then
         log_error "This build system only supports Linux. Current platform: $(uname -s)"
         exit 1
     fi
-    
+
     log_success "Linux platform detected - seccomp supported"
     PLATFORM="linux"
-    
+
     ARCH=$(uname -m)
     log_info "Architecture: $ARCH"
-    
+
     case "$ARCH" in
         x86_64|amd64)
             log_success "x86_64 architecture supported"
@@ -61,47 +61,47 @@ check_platform() {
 # 检查依赖
 check_dependencies() {
     log_info "Checking build dependencies..."
-    
+
     # 检查编译器
     if ! command -v gcc &> /dev/null; then
         log_error "gcc compiler not found. Please install build-essential or equivalent."
         exit 1
     fi
-    
+
     # 检查make
     if ! command -v make &> /dev/null; then
         log_error "make not found. Please install make."
         exit 1
     fi
-    
+
     # 检查Python
     if ! command -v python3 &> /dev/null; then
         log_error "python3 not found. Please install Python 3."
         exit 1
     fi
-    
+
     log_success "All dependencies satisfied"
 }
 
 # 创建构建目录
 setup_build_dirs() {
     log_info "Setting up build directories..."
-    
+
     mkdir -p build/lib
     mkdir -p build/logs
-    
+
     log_success "Build directories created"
 }
 
 # 构建C共享库
 build_shared_library() {
     log_info "Building seccomp injector shared library..."
-    
+
     cd src/security/bpf
-    
+
     # 清理之前的构建
     make clean 2>/dev/null || true
-    
+
     # 构建
     if make all 2>&1 | tee ../../../build/logs/build.log; then
         log_success "Shared library built successfully"
@@ -110,23 +110,23 @@ build_shared_library() {
         cd ../../..
         exit 1
     fi
-    
+
     cd ../../..
 }
 
 # 主函数
 main() {
     log_info "Starting seccomp security component build..."
-    
+
     check_platform
     check_dependencies
     setup_build_dirs
     build_shared_library
-    
+
     log_success "Build completed successfully!"
     log_info "Shared library location: build/lib/"
     log_info "Build logs: build/logs/"
-    
+
     log_info "To install system-wide (requires sudo): cd src/security/bpf && make install"
 }
 

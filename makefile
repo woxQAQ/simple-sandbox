@@ -4,7 +4,7 @@ VERSION ?= "latest"
 BUILDX_PLATFORM ?= "linux/amd64,linux/arm64"
 BUILDX_ARGS ?= --sbom=false --provenance=false
 
-.PHONY: fmt build-security test-security clean-security build clean-all help
+.PHONY: fmt build-security test-security clean-security build clean-all test test-unit test-integration test-all help
 
 # 代码格式化
 fmt:
@@ -30,6 +30,37 @@ build: fmt build-security
 # 完整清理
 clean-all: clean-security
 	@echo "Complete cleanup finished"
+
+# 测试相关目标
+test-security:
+	@echo "Testing security components..."
+	@cd src/security/bpf && make test
+
+# 运行所有测试
+test: fmt build-security
+	@echo "Running all tests..."
+	@python -m pytest tests/ -v --cov=src --cov-report=term-missing --cov-report=html:htmlcov --cov-report=xml:coverage.xml
+
+# 运行单元测试
+test-unit:
+	@echo "Running unit tests..."
+	@python -m pytest tests/unit/ -v -m unit
+
+# 运行集成测试
+test-integration:
+	@echo "Running integration tests..."
+	@python -m pytest tests/integration/ -v -m integration
+
+# 运行完整测试套件
+test-all: fmt build-security
+	@echo "Running complete test suite..."
+	@python -m pytest tests/ -v --cov=src --cov-report=term-missing --cov-report=html:htmlcov --cov-report=xml:coverage.xml --cov-fail-under=80
+
+# 运行代码质量检查
+quality: fmt
+	@echo "Running code quality checks..."
+	@bandit -r src/
+	@safety check
 
 ########################
 # 		build          #
@@ -70,4 +101,9 @@ help:
 	@echo "  clean-security                - Clean security build artifacts"
 	@echo "  build                    	   - Complete build including security"
 	@echo "  clean-all                     - Complete cleanup"
+	@echo "  test                          - Run all tests"
+	@echo "  test-unit                     - Run unit tests only"
+	@echo "  test-integration              - Run integration tests only"
+	@echo "  test-all                      - Run complete test suite with coverage"
+	@echo "  quality                       - Run code quality checks (bandit, safety)"
 	@echo "  help                          - Show this help message"

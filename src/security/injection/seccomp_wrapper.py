@@ -81,25 +81,17 @@ class SeccompInjector:
                 "libseccomp_injector.so",
             ]
 
-        # 搜索路径
-        search_paths = [
-            # 相对于当前文件的路径
-            Path(__file__).parent.parent / "bpf",
-            # 构建目录
-            Path(__file__).parent.parent.parent.parent / "build" / "lib",
-            # 系统库路径
-            Path("/usr/local/lib"),
-            Path("/usr/lib"),
-        ]
+        # 搜索路径 - 固定为 /app/build/lib
+        search_path = Path("/app/build/lib")
 
-        for search_path in search_paths:
-            for lib_name in lib_names:
-                lib_path = search_path / lib_name
-                if lib_path.exists():
-                    return str(lib_path)
+        for lib_name in lib_names:
+            lib_path = search_path / lib_name
+            if lib_path.exists():
+                return str(lib_path)
 
         raise FileNotFoundError(
-            f"Could not find seccomp injector library. Searched in: {search_paths}"
+            f"Could not find seccomp injector library in {search_path}. "
+            f"Looking for: {lib_names}"
         )
 
     def _load_library(self, library_path: Optional[str]):

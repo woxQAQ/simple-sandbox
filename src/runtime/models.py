@@ -1,45 +1,17 @@
-from dataclasses import dataclass
-from enum import Enum
-from typing import Dict, Optional
+"""
+运行时模型定义
+"""
 
+# 从公共模型导入以保持兼容性并避免循环导入
+from src.models import (
+    ExecutionStatus,
+    ExecutionRequest,
+    ExecutionResult,
+)
 
-class ExecutionStatus(Enum):
-    SUCCESS = "success"
-    ERROR = "error"
-    TIMEOUT = "timeout"
-    MEMORY_EXCEEDED = "memory_exceeded"
-    KILLED = "killed"
-
-
-@dataclass
-class ResourceLimits:
-    max_memory_mb: int = 128
-    max_cpu_time_seconds: int = 30
-    max_processes: int = 5
-    max_file_size_mb: int = 10
-    max_files: int = 100
-
-
-@dataclass
-class ExecutionResult:
-    status: ExecutionStatus
-    stdout: str
-    stderr: str
-    execution_time: float
-    memory_used_mb: float
-    exit_code: Optional[int] = None
-    error_message: Optional[str] = None
-
-
-@dataclass
-class ExecutionRequest:
-    language: str
-    code: str
-    timeout: int = 30
-    memory_limit: int = 128
-    input_data: str = ""
-    environment_variables: Dict[str, str] = None
-
-    def __post_init__(self):
-        if self.environment_variables is None:
-            self.environment_variables = {}
+# 保持向后兼容性
+__all__ = [
+    "ExecutionStatus",
+    "ExecutionRequest", 
+    "ExecutionResult",
+]

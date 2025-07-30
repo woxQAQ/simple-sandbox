@@ -1,0 +1,253 @@
+name: CI/CD - Pull Request
+
+on:
+  pull_request:
+    branches: [ main, develop ]
+    types: [ opened, synchronize, reopened ]
+
+env:
+  PYTHON_VERSION: '3.11'
+  NODE_VERSION: '18'
+
+jobs:
+  code-quality:
+    name: Code Quality
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ env.PYTHON_VERSION }}
+
+    - name: Install uv
+      uses: astral-sh/setup-uv@v2
+      with:
+        version: "latest"
+
+    - name: Install dependencies
+      run: |
+        uv sync --dev
+
+    - name: Run code formatting check
+      run: |
+        make fmt
+
+    - name: Run security checks
+      run: |
+        make quality
+
+  build-security:
+    name: Build Security Components
+    runs-on: ubuntu-latest
+    needs: code-quality
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ env.PYTHON_VERSION }}
+
+    - name: Install system dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y build-essential gcc make
+
+    - name: Install uv
+      uses: astral-sh/setup-uv@v2
+      with:
+        version: "latest"
+
+    - name: Install dependencies
+      run: |
+        uv sync --dev
+
+    - name: Build security components
+      run: |
+        make build-security
+
+    - name: Test security components
+      run: |
+        make test-security
+
+  unit-tests:
+    name: Unit Tests
+    runs-on: ubuntu-latest
+    needs: [code-quality, build-security]
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ env.PYTHON_VERSION }}
+
+    - name: Install uv
+      uses: astral-sh/setup-uv@v2
+      with:
+        version: "latest"
+
+    - name: Install dependencies
+      run: |
+        uv sync --dev
+
+    - name: Run unit tests
+      run: |
+        make test-unit
+
+    - name: Upload coverage to Codecov
+      uses: codecov/codecov-action@v3
+      with:
+        file: ./coverage.xml
+        flags: unit-tests
+        name: codecov-umbrella
+
+  integration-tests:
+    name: Integration Tests
+    runs-on: ubuntu-latest
+    needs: [code-quality, build-security]
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ env.PYTHON_VERSION }}
+
+    - name: Install Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ env.NODE_VERSION }}
+
+    - name: Install uv
+      uses: astral-sh/setup-uv@v2
+      with:
+        version: "latest"
+
+    - name: Install dependencies
+      run: |
+        uv sync --dev
+
+    - name: Install Node.js dependencies for transformers
+      run: |
+        cd src/runtime/transformer/nodejs
+        npm install
+
+    - name: Run integration tests
+      run: |
+        make test-integration
+
+    - name: Upload coverage to Codecov
+      uses: codecov/codecov-action@v3
+      with:
+        file: ./coverage.xml
+        flags: integration-tests
+        name: codecov-umbrella
+
+  type-checking:
+    name: Type Checking
+    runs-on: ubuntu-latest
+    needs: code-quality
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ env.PYTHON_VERSION }}
+
+    - name: Install uv
+      uses: astral-sh/setup-uv@v2
+      with:
+        version: "latest"
+
+    - name: Install dependencies
+      run: |
+        uv sync --dev
+
+    - name: Run mypy
+      run: |
+        uv run mypy src/
+
+  build-test:
+    name: Build Test
+    runs-on: ubuntu-latest
+    needs: [unit-tests, integration-tests, type-checking]
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+
+    - name: Build test image
+      run: |
+        make build-image
+
+    - name: Test Docker image
+      run: |
+        docker run --rm ${{ env.IMAGE_NAME }}:test python -c "import src; print('Image test successful')"
+      env:
+        IMAGE_NAME: ${{ github.repository }}
+        VERSION: test
+
+  summary:
+    name: PR Summary
+    runs-on: ubuntu-latest
+    needs: [unit-tests, integration-tests, type-checking, build-test]
+    if: always()
+
+    steps:
+    - name: PR Summary
+      uses: actions/github-script@v7
+      with:
+        script: |
+          const { data: pullRequest } = await github.rest.pulls.get({
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            pull_number: context.issue.number
+          });
+
+          const jobs = [
+            'code-quality',
+            'build-security',
+            'unit-tests',
+            'integration-tests',
+            'type-checking',
+            'build-test'
+          ];
+
+          let allPassed = true;
+          let summary = '## CI/CD Summary\\n\\n';
+
+          for (const job of jobs) {
+            const result = context.payload.workflow_run.jobs.find(j => j.name === job);
+            const status = result && result.conclusion === 'success' ? '' : 'L';
+            const statusText = result && result.conclusion === 'success' ? 'Passed' : 'Failed';
+            summary += `- ${status} **${job}**: ${statusText}\\n`;
+            if (result && result.conclusion !== 'success') {
+              allPassed = false;
+            }
+          }
+
+          summary += `\\n### Overall Status: ${allPassed ? ' All Checks Passed' : 'L Some Checks Failed'}`;
+
+          await github.rest.issues.createComment({
+            issue_number: context.issue.number,
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            body: summary
+          });

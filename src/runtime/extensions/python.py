@@ -9,7 +9,7 @@ from src.runtime.extensions.plugins.python import (
     MatplotlibASTPlugin,
     PythonConsoleASTPlugin,
 )
-from src.runtime.extensions.transformer import (
+from src.runtime.transformer import (
     PythonASTContext,
     PythonASTPlugin,
     PythonASTTransformer,

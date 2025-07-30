@@ -15,6 +15,7 @@ from typing import Any, Dict
 @dataclass
 class NodeASTPlugin:
     name: str
+    priority: int = 100
 
 
 def get_plugins():
@@ -45,8 +46,11 @@ class NodeJSASTManager:
     """Node.js AST管理器 - 通过Node进程调用acorn"""
 
     def __init__(self):
+        # 正确的路径是 src/runtime/transformer/nodejs/transformer.js
+        current_dir = os.path.dirname(__file__)  # src/runtime/extensions
+        runtime_dir = os.path.dirname(current_dir)  # src/runtime
         self.js_transformer_path = os.path.join(
-            os.path.dirname(__file__), "transformer/nodejs/transformer.js"
+            runtime_dir, "transformer/nodejs/transformer.js"
         )
 
     def transform_code(self, code: str, context: Dict[str, Any] = None) -> str:
