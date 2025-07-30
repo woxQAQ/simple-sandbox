@@ -31,6 +31,7 @@ jobs:
     - name: Install dependencies
       run: |
         uv sync --dev
+        source .venv/bin/activate
 
     - name: Run code formatting check
       run: |
@@ -67,6 +68,7 @@ jobs:
     - name: Install dependencies
       run: |
         uv sync --dev
+        source .venv/bin/activate
 
     - name: Build security components
       run: |
@@ -98,6 +100,7 @@ jobs:
     - name: Install dependencies
       run: |
         uv sync --dev
+        source .venv/bin/activate
 
     - name: Run unit tests
       run: |
@@ -137,6 +140,7 @@ jobs:
     - name: Install dependencies
       run: |
         uv sync --dev
+        source .venv/bin/activate
 
     - name: Install Node.js dependencies for transformers
       run: |
@@ -176,6 +180,7 @@ jobs:
     - name: Install dependencies
       run: |
         uv sync --dev
+        source .venv/bin/activate
 
     - name: Run mypy
       run: |

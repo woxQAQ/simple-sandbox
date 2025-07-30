@@ -17,7 +17,7 @@ wget -O /opt/node/node-${NODEJS_VERSION}-${NODEJS_ARCH}.tar.xz \
        ${NODEJS_MIRROR}/${NODEJS_VERSION}/node-${NODEJS_VERSION}-${NODEJS_ARCH}.tar.xz
 
 cd /opt/node
-tar -xf node-${NODEJS_VERSION}-${NODEJS_ARCH}.tar.xz
+tar -xJf node-${NODEJS_VERSION}-${NODEJS_ARCH}.tar.xz
 
 NODEJS_DIR="node-${NODEJS_VERSION}-${NODEJS_ARCH}"
 mv "$NODEJS_DIR" nodejs
@@ -28,7 +28,11 @@ ln -sf /opt/node/nodejs/bin/node /usr/local/bin/node
 ln -sf /opt/node/nodejs/bin/npm /usr/local/bin/npm
 
 # 安装Node.js transformer依赖
-cd /app/src/runtime/transformer/nodejs && npm install
+if [ -d "/app/src/runtime/transformer/nodejs" ]; then
+    cd /app/src/runtime/transformer/nodejs && npm install
+else
+    echo "Warning: Node.js transformer directory not found, skipping npm install"
+fi
 
 echo "Node.js setup completed:"
 /opt/node/nodejs/bin/node --version
