@@ -213,6 +213,7 @@ version = "0.1.0"
 source = { virtual = "." }
 dependencies = [
     { name = "astor" },
+    { name = "python-dotenv" },
 ]
 
 [package.dev-dependencies]
@@ -233,7 +234,10 @@ dev = [
 ]
 
 [package.metadata]
-requires-dist = [{ name = "astor", specifier = ">=0.8.1" }]
+requires-dist = [
+    { name = "astor", specifier = ">=0.8.1" },
+    { name = "python-dotenv", specifier = ">=1.1.1" },
+]
 
 [package.metadata.requires-dev]
 dev = [

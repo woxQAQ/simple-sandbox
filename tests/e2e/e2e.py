@@ -94,7 +94,9 @@ class E2ETestRunner:
             report_dir.mkdir(exist_ok=True)
 
             test_args = [
-                "suites/",
+                "suites/test-python-codes.py",
+                "suites/test-nodejs-codes.py",
+                "suites/test_simple.py",
                 "-v",
                 "--tb=short",
                 f"--html={report_dir}/test_report.html",

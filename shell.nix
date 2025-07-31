@@ -9,9 +9,13 @@ pkgs.mkShell {
   buildInputs = with pkgs; [
     uv
     python311
+    zsh
   ];
-  shellHook = # sh
+  shellHook = # zsh
     ''
+      # 设置zsh作为默认shell
+      export SHELL="${pkgs.zsh}/bin/zsh"
+
       echo "bootstraping uv-managed virtualenv ..."
       if [ ! -d "${venvDir}" ]; then
         uv venv "${venvDir}"
@@ -22,5 +26,8 @@ pkgs.mkShell {
       uv sync --dev
       uv sync
       echo "virtualenv activate at ${venvDir}"
+
+      # 切换到zsh
+      exec zsh
     '';
 }

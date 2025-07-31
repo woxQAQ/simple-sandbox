@@ -1,28 +1,25 @@
+import subprocess
+import time
 from typing import Dict, List
 
-from src.models import ExecutionResult
+from src.config import config
 from src.runtime.base import LanguageRuntime
 from src.runtime.extensions.node import nodejs_ast_manager
-
-
-# 延迟导入以避免循环导入
-def get_process_manager():
-    from src.utils.process_manager import ProcessManager
-
-    return ProcessManager
+from src.runtime.models import ExecutionResult, ExecutionStatus
+from src.utils import (
+    create_file_in_dir,
+    entrypoint_templates,
+    set_executable_permission,
+    temporary_sandbox_dir,
+)
+from src.utils.crypto_utils import CryptoUtils
 
 
 class NodeJSRuntime(LanguageRuntime):
     """Node.js运行时实现"""
 
-    def __init__(self, process_manager=None):
+    def __init__(self):
         super().__init__("nodejs")
-
-        # 使用提供的进程管理器或创建新的
-        if process_manager is None:
-            ProcessManager = get_process_manager()
-            process_manager = ProcessManager()
-        self.process_manager = process_manager
 
     def get_supported_extensions(self) -> List[str]:
         return [".js", ".mjs", ".cjs"]
@@ -48,8 +45,7 @@ class NodeJSRuntime(LanguageRuntime):
 
     def get_command(self, filename: str = None) -> List[str]:
         """获取Node.js执行命令"""
-        # 简化的启动参数
-        return ["node"]
+        return [config.NODEJS_PATH]
 
     def execute(
         self,
@@ -58,23 +54,91 @@ class NodeJSRuntime(LanguageRuntime):
         env_vars: Dict[str, str] = None,
     ) -> ExecutionResult:
         """执行Node.js代码"""
+        start_time = time.time()
 
         # 预处理代码
         processed_code = self.preprocess_code(code)
 
-        # 设置环境变量
-        if env_vars is None:
-            env_vars = {}
+        # 使用上下文管理器创建临时沙盒目录
+        with temporary_sandbox_dir() as sandbox_dir:
+            # 创建加密工具实例
+            crypto_utils = CryptoUtils()
 
-        # 添加输入数据到环境变量
-        if input_data:
-            env_vars["NODE_INPUT"] = input_data
+            # 生成加密密钥并加密代码
+            encryption_key = crypto_utils.generate_encryption_key()
+            encrypted_code = crypto_utils.encrypt_code(
+                processed_code, encryption_key
+            )
 
-        # 使用进程管理器执行代码
-        return self.process_manager.execute(
-            command=self.get_command(),
-            code=processed_code,
-            input_data=input_data,
-            env_vars=env_vars,
-            language="nodejs",
-        )
+            # 创建entrypoint文件（直接嵌入加密代码）
+            entrypoint_path = create_file_in_dir(
+                sandbox_dir,
+                "entrypoint.js",
+                entrypoint_templates.create_entrypoint(
+                    "nodejs", encrypted_code, encryption_key
+                ),
+            )
+
+            # 设置执行权限
+            set_executable_permission(entrypoint_path)
+
+            # 构建执行命令（只传递加密密钥）
+            node_command = self.get_command()
+            command = node_command + [entrypoint_path, encryption_key]
+
+            # 不传递环境变量，保持原有的空环境
+            process_env = {}
+
+            try:
+                # 执行进程
+                process = subprocess.Popen(
+                    command,
+                    stdin=subprocess.PIPE if input_data else None,
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.PIPE,
+                    env=process_env,
+                    text=True,
+                    cwd=sandbox_dir,
+                )
+
+                stdout, stderr = process.communicate(
+                    input=input_data if input_data else None,
+                    timeout=config.CODE_EXECUTION_TIMEOUT,
+                )
+
+                execution_time = time.time() - start_time
+
+                return ExecutionResult(
+                    status=(
+                        ExecutionStatus.SUCCESS
+                        if process.returncode == 0
+                        else ExecutionStatus.ERROR
+                    ),
+                    stdout=stdout or "",
+                    stderr=stderr or "",
+                    execution_time=execution_time,
+                    exit_code=process.returncode,
+                    error_message=stderr if process.returncode != 0 else None,
+                )
+
+            except subprocess.TimeoutExpired:
+                execution_time = time.time() - start_time
+                return ExecutionResult(
+                    status=ExecutionStatus.TIMEOUT,
+                    stdout="",
+                    stderr="Execution timed out",
+                    execution_time=execution_time,
+                    exit_code=-1,
+                    error_message="Execution timed out",
+                )
+
+            except Exception as e:
+                execution_time = time.time() - start_time
+                return ExecutionResult(
+                    status=ExecutionStatus.ERROR,
+                    stdout="",
+                    stderr=str(e),
+                    execution_time=execution_time,
+                    exit_code=-1,
+                    error_message=str(e),
+                )

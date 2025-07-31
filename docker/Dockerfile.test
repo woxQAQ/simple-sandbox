@@ -1,52 +1,87 @@
 # Dockerfile.test - 简化版用于e2e测试
-# 避免使用buildx，专注于快速构建测试镜像
+# 单架构构建，与主Dockerfile保持一致
 
-FROM python:3.11-slim
+# Build stage
+FROM python:3.11.13-slim-bookworm AS builder
+ARG DEBIAN_MIRROR="http://deb.debian.org/debian"
+WORKDIR /app
+COPY pyproject.toml uv.lock ./
+COPY scripts/ ./scripts/
+COPY src/ ./src/
 
-# 安装基础依赖
-RUN apt update && apt install -y --no-install-recommends \
+# 安装构建依赖
+RUN echo "deb ${DEBIAN_MIRROR} bookworm main" > /etc/apt/sources.list && \
+    apt update && apt install -y --no-install-recommends \
+    libseccomp-dev \
+    libsqlite3-0 \
+    zlib1g \
+    pkg-config \
     curl \
-    wget \
-    xz-utils \
     build-essential \
     && apt clean \
     && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 
-# 安装Node.js
-RUN curl -fsSL https://nodejs.org/dist/v20.11.0/node-v20.11.0-linux-x64.tar.xz | tar -xJ -C /usr/local --strip-components=1
+COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
 
-# 安装uv
-RUN pip install uv
+RUN uv venv /opt/venv --python 3.11 \
+    && . /opt/venv/bin/activate \
+    && uv sync --active
 
-# 设置工作目录
+RUN ./scripts/build.sh
+
+# build transformer package
+FROM node:20.11.0 AS node_builder
+
 WORKDIR /app
-
-# 复制项目文件
-COPY . /app/
-
-# 安装Python依赖
-RUN uv venv /opt/venv --python 3.11
-RUN . /opt/venv/bin/activate && uv sync
-
-# 安装Node.js依赖
+COPY src/ ./src/
 RUN cd src/runtime/transformer/nodejs && npm install
 
-# 设置环境变量
-ENV PATH="/opt/venv/bin:/usr/local/bin:$PATH"
-ENV PYTHONPATH="/app/src"
+# Final Stage
+FROM python:3.11.13-slim
 
-# 构建必要的组件
-RUN . /opt/venv/bin/activate && pip install --no-deps -e .
+# 重新声明ARG变量
+ARG DEBIAN_MIRROR="http://deb.debian.org/debian"
+ENV NODEJS_VERSION=v20.11.0
 
-# 构建seccomp共享库
-RUN cd src/security/bpf && make
+RUN echo "deb ${DEBIAN_MIRROR} bookworm main" > /etc/apt/sources.list && \
+    rm -f /etc/apt/sources.list.d/debian.sources && \
+    apt update && apt install -y --no-install-recommends \
+    wget \
+    curl \
+    libseccomp-dev \
+    libsqlite3-0 \
+    zlib1g \
+    pkg-config \
+    xz-utils \
+    && apt clean \
+    && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
+
+COPY . /app
+COPY .env.example /app/.env
+
+RUN /app/scripts/install_nodejs.sh amd64
+
+# copy language runtime from builder
+COPY --from=builder /opt/venv /opt/venv
+COPY --from=builder /var/sandbox /var/sandbox
+
+ENV PATH="/opt/venv/bin:/opt/node/bin:$PATH"
+
+# COPY --from=builder /app/build/lib /app/build/lib
+COPY --from=node_builder /app/src/runtime/transformer/nodejs/node_modules /app/src/runtime/transformer/nodejs/node_modules
+WORKDIR /app
+
+RUN . /opt/venv/bin/activate && pip install --no-deps -e . && \
+    pip install matplotlib numpy && \
+    rm -rf /tmp/*
 
 # 创建非root用户
-RUN useradd -m -u 1000 sandbox && chown -R sandbox:sandbox /app
-USER sandbox
+# RUN useradd -m -u 1000 sandbox && chown -R sandbox:sandbox /app
+# USER sandbox
 
 # 暴露端口
 EXPOSE 8000
 
-# 启动命令
-CMD ["python", "main.py", "--port", "8000"]
+ENV TARGET_ARCH="amd64"
+
+ENTRYPOINT [ "/app/scripts/entrypoint.sh" ]

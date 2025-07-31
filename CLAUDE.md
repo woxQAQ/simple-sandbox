@@ -2,6 +2,7 @@
 
 - The answer results in Chinese.
 - When you run any command in the shell, instead of using the `cd` command to switch to the target directory, you should concatenate the full relative path where the path is required in the command being executed.
+- When you want to run tests, use the makefile as possible.
 
 
 ## mcp servers

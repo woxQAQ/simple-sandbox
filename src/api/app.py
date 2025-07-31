@@ -1,9 +1,13 @@
 import json
 import logging
+import threading
 import time
+from collections import defaultdict, deque
+from datetime import datetime, timedelta
 from enum import Enum
 from http.server import BaseHTTPRequestHandler, HTTPServer
 
+from src.config import config
 from src.runtime import NodeJSRuntime, PythonRuntime
 
 
@@ -17,8 +21,45 @@ RUNTIMES = {Language.PYTHON: PythonRuntime(), Language.NODEJS: NodeJSRuntime()}
 
 logger = logging.getLogger(__name__)
 
+# 并发控制
+request_semaphore = threading.Semaphore(config.MAX_CONCURRENT_REQUESTS)
+
+# 请求速率限制
+request_timestamps = defaultdict(deque)
+request_lock = threading.Lock()
+
 
 class SimpleHTTPRequestHandler(BaseHTTPRequestHandler):
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.start_time = time.time()
+
+    def check_rate_limit(self, client_ip: str) -> bool:
+        """检查请求速率限制"""
+        if not config.ENABLE_RATE_LIMITING:
+            return True
+
+        with request_lock:
+            now = datetime.now()
+            timestamps = request_timestamps[client_ip]
+
+            # 清理1分钟前的请求记录
+            while timestamps and timestamps[0] < now - timedelta(minutes=1):
+                timestamps.popleft()
+
+            # 检查是否超过限制
+            if len(timestamps) >= config.MAX_REQUESTS_PER_MINUTE:
+                return False
+
+            # 记录当前请求
+            timestamps.append(now)
+            return True
+
+    def get_client_ip(self) -> str:
+        """获取客户端IP"""
+        return self.client_address[0] if self.client_address else "unknown"
+
     def do_OPTIONS(self):
         """处理CORS预检请求"""
         self.send_response(200)
@@ -75,6 +116,18 @@ class SimpleHTTPRequestHandler(BaseHTTPRequestHandler):
 
     def _handle_execute(self):
         """处理代码执行"""
+        client_ip = self.get_client_ip()
+
+        # 检查速率限制
+        if not self.check_rate_limit(client_ip):
+            self._send_error("Rate limit exceeded. Too many requests.", 429)
+            return
+
+        # 检查并发限制
+        if not request_semaphore.acquire(blocking=False):
+            self._send_error("Server busy. Too many concurrent requests.", 503)
+            return
+
         try:
             # 读取请求体
             content_length = int(self.headers.get("Content-Length", 0))
@@ -92,11 +145,7 @@ class SimpleHTTPRequestHandler(BaseHTTPRequestHandler):
                 )
                 return
 
-            # 验证代码长度
-            if len(request_data["code"]) > 1024 * 1024:  # 1MB限制
-                self._send_error("Code size exceeds 1MB limit", 413)
-                return
-
+  
             language = request_data["language"]
             code = request_data["code"]
             input_data = request_data.get("input_data", "")
@@ -115,6 +164,7 @@ class SimpleHTTPRequestHandler(BaseHTTPRequestHandler):
                 env_vars=env_vars,
             )
 
+    
             # 返回响应
             response = {
                 "status": result.status.value,
@@ -133,19 +183,29 @@ class SimpleHTTPRequestHandler(BaseHTTPRequestHandler):
                 logger.error(f"Request body: {request_body}")
             self._send_error("Invalid JSON", 400)
         except Exception as e:
+            logger.error(f"Execution error: {e}")
             self._send_error(f"Internal server error: {str(e)}", 500)
+        finally:
+            # 释放信号量
+            request_semaphore.release()
 
     def _handle_404(self):
         """处理404错误"""
         self._send_json_response({"error": "Not found"}, 404)
 
 
-def run_server(host="0.0.0.0", port=8000):
+def run_server(host=None, port=None):
     """启动HTTP服务器"""
+    if host is None:
+        host = "0.0.0.0"
+    if port is None:
+        port = 8000
+
     server = HTTPServer((host, port), SimpleHTTPRequestHandler)
     logger = logging.getLogger(__name__)
 
     logger.info(f"Code Sandbox API started on http://{host}:{port}")
+    logger.info(f"Configuration: {config.to_dict()}")
 
     def signal_handler(signum, frame):
         """信号处理函数"""
@@ -171,4 +231,4 @@ def run_server(host="0.0.0.0", port=8000):
 
 
 if __name__ == "__main__":
-    run_server(port=8001)
+    run_server()

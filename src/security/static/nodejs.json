@@ -90,6 +90,8 @@
         "shutdown",
         "getpeername",
         "getsockname",
+        "execve",
+        "execveat",
         "timer_create",
         "timer_settime",
         "timer_gettime",

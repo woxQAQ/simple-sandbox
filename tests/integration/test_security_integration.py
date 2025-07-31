@@ -305,16 +305,16 @@ class TestSecurityWithRuntime:
         assert "syscalls" in config
         assert len(config["syscalls"]) > 0
 
-    def test_process_manager_with_security(self):
-        """测试进程管理器与安全模块集成"""
-        from src.utils.process_manager import ProcessManager
+    def test_runtime_with_security(self):
+        """测试运行时与安全模块集成"""
+        from src.runtime.python_runtime import PythonRuntime
 
-        # 创建进程管理器（简化版本，不包含seccomp功能）
-        process_manager = ProcessManager()
+        # 创建运行时
+        runtime = PythonRuntime()
 
-        # 验证进程管理器能正常创建和执行
-        assert process_manager is not None
-        assert process_manager.work_dir.exists()
+        # 验证运行时能正常创建和执行
+        assert runtime is not None
+        assert runtime.get_language() == "python"
 
 
 class TestSecurityBoundaryConditions:

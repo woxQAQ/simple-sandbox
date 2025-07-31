@@ -25,6 +25,20 @@ class ContainerManager:
             logger.error(f"无法连接到Docker: {e}")
             raise
 
+    def check_image_exists(self, image_name: str) -> bool:
+        """检查镜像是否存在"""
+        try:
+            logger.info(f"检查镜像是否存在: {image_name}")
+            self.client.images.get(image_name)
+            logger.info(f"镜像存在: {image_name}")
+            return True
+        except docker.errors.ImageNotFound:
+            logger.warning(f"镜像不存在: {image_name}")
+            return False
+        except Exception as e:
+            logger.error(f"检查镜像失败: {e}")
+            return False
+
     def build_image(
         self,
         build_context: Path,
@@ -41,9 +55,21 @@ class ContainerManager:
                 rm=True,
             )
 
+            logger.info(f"开始构建镜像，构建上下文: {build_context}")
+            logger.info(f"Dockerfile路径: {dockerfile}")
+
+            # 打印构建日志
             for log in build_logs:
                 if "stream" in log:
                     logger.info(log["stream"].strip())
+                elif "error" in log:
+                    logger.error(log["error"].strip())
+                elif "status" in log:
+                    logger.info(log["status"].strip())
+                elif "aux" in log:
+                    logger.info(f"构建信息: {log['aux']}")
+                else:
+                    logger.info(str(log))
 
             logger.info(f"镜像构建完成: {image.id}")
             return image.id

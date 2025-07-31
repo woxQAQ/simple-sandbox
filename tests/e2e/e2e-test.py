@@ -1,9 +1,10 @@
 """
 e2e测试入口文件 - 测试专用版本
-使用Dockerfile.test进行本地构建和测试
+支持本地构建和使用现有镜像
 """
 
 import logging
+import os
 import sys
 from datetime import datetime
 from pathlib import Path
@@ -24,6 +25,12 @@ class E2ETestRunner:
         self.container_manager = ContainerManager()
         self.container = None
         self.client = None
+
+        # 从环境变量获取配置
+        self.use_local_image = (
+            os.getenv("USE_LOCAL_IMAGE", "false").lower() == "true"
+        )
+        self.force_build = os.getenv("FORCE_BUILD", "false").lower() == "true"
 
         self._setup_logging()
 
@@ -47,16 +54,47 @@ class E2ETestRunner:
         """设置测试环境"""
         logger.info("开始设置测试环境")
 
+        # 显示当前配置
+        logger.info(f"使用本地镜像: {self.use_local_image}")
+        logger.info(f"强制构建: {self.force_build}")
+
         try:
             build_context = Path(__file__).parent.parent.parent
-            dockerfile = "Dockerfile.test"
-            image_name = self.config.get("docker_image_name")
+            dockerfile = "docker/Dockerfile.test"
 
-            logger.info(f"构建上下文: {build_context}")
-            logger.info(f"构建测试镜像: {image_name}")
-            self.container_manager.build_image(
-                build_context, image_name, dockerfile
-            )
+            # 确定镜像名称
+            if self.use_local_image:
+                image_name = "sandbox-test"  # 本地构建的镜像名称
+            else:
+                image_name = self.config.get(
+                    "docker_image_name"
+                )  # 远程镜像名称
+
+            logger.info(f"使用镜像: {image_name}")
+
+            # 检查是否需要构建镜像
+            if self.use_local_image and (
+                self.force_build
+                or not self.container_manager.check_image_exists(image_name)
+            ):
+                if not self.container_manager.check_image_exists(image_name):
+                    logger.warning(f"镜像不存在: {image_name}")
+
+                logger.info(f"构建上下文: {build_context}")
+                logger.info(f"构建测试镜像: {image_name}")
+                self.container_manager.build_image(
+                    build_context, image_name, dockerfile
+                )
+            elif self.use_local_image:
+                logger.info(f"使用现有本地镜像: {image_name}")
+            else:
+                logger.info(f"使用远程镜像: {image_name}")
+                if not self.container_manager.check_image_exists(image_name):
+                    logger.error(f"远程镜像不存在: {image_name}")
+                    logger.error(
+                        "请先拉取镜像: docker pull woxqaq/simple-sandbox"
+                    )
+                    raise RuntimeError(f"远程镜像不存在: {image_name}")
 
             container_name = self.config.get("docker_container_name")
             port_mapping = self.config.get("port_mapping")
@@ -104,7 +142,9 @@ class E2ETestRunner:
             report_dir.mkdir(exist_ok=True)
 
             test_args = [
-                "suites/",
+                "suites/test_simple.py",
+                "suites/test-python-codes.py",
+                "suites/test-nodejs-codes.py",
                 "-v",
                 "--tb=short",
                 f"--html={report_dir}/test_report.html",

@@ -3,8 +3,7 @@ set -o errexit
 set -o pipefail
 set -o nounset
 
-NODEJS_VERSION=$1
-TARGETARCH=$2
+TARGETARCH=$1
 NODEJS_MIRROR="https://nodejs.org/dist"
 
 if [ "$TARGETARCH" = "amd64" ]; then
@@ -17,5 +16,5 @@ else
 fi
 
 mkdir -p /opt
-wget -O /opt/node.tar.xz \
+wget -O /opt/node-${NODEJS_VERSION}-linux-${NODEJS_ARCH}.tar.xz \
        ${NODEJS_MIRROR}/${NODEJS_VERSION}/node-${NODEJS_VERSION}-linux-${NODEJS_ARCH}.tar.xz

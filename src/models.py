@@ -4,7 +4,7 @@
 
 from dataclasses import dataclass
 from enum import Enum
-from typing import Any, Dict, Optional
+from typing import Dict, Optional
 
 
 class ExecutionStatus(Enum):
@@ -40,7 +40,5 @@ class ExecutionResult:
     stdout: str
     stderr: str
     execution_time: float
-    memory_used_mb: float
     exit_code: Optional[int] = None
     error_message: Optional[str] = None
-    metadata: Optional[Dict[str, Any]] = None

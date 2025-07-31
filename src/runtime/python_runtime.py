@@ -1,13 +1,18 @@
-import contextlib
-import io
-import os
-import sys
+import subprocess
 import time
 from typing import Dict, List
 
+from src.config import config
 from src.runtime.base import LanguageRuntime
 from src.runtime.extensions.python import PythonASTContext, python_ast_registry
 from src.runtime.models import ExecutionResult, ExecutionStatus
+from src.utils import (
+    create_file_in_dir,
+    entrypoint_templates,
+    set_executable_permission,
+    temporary_sandbox_dir,
+)
+from src.utils.crypto_utils import CryptoUtils
 
 
 class PythonRuntime(LanguageRuntime):
@@ -33,6 +38,10 @@ class PythonRuntime(LanguageRuntime):
         transformed_code = python_ast_registry.transform_code(code, context)
         return transformed_code
 
+    def get_command(self, filename: str = None) -> List[str]:
+        """获取Python执行命令"""
+        return [config.PYTHON_PATH]
+
     def execute(
         self,
         code: str,
@@ -45,83 +54,89 @@ class PythonRuntime(LanguageRuntime):
         # 预处理代码
         processed_code = self.preprocess_code(code, input_data, env_vars)
 
-        # 设置环境变量
-        if env_vars is None:
-            env_vars = {}
+        # 使用上下文管理器创建临时沙盒目录
+        with temporary_sandbox_dir() as sandbox_dir:
+            # 创建加密工具实例
+            crypto_utils = CryptoUtils()
 
-        # 临时保存当前环境变量
-        old_env = {}
-        for key, value in env_vars.items():
-            old_env[key] = os.environ.get(key)
-            os.environ[key] = value
+            # 生成加密密钥并加密代码
+            encryption_key = crypto_utils.generate_encryption_key()
+            encrypted_code = crypto_utils.encrypt_code(
+                processed_code, encryption_key
+            )
 
-        # 重定向标准输入输出
-        stdout_capture = io.StringIO()
-        stderr_capture = io.StringIO()
-        exit_code = 0
-        error_message = None
+            # 创建entrypoint文件（直接嵌入加密代码）
+            entrypoint_path = create_file_in_dir(
+                sandbox_dir,
+                "entrypoint.py",
+                entrypoint_templates.create_entrypoint(
+                    "python", encrypted_code, encryption_key
+                ),
+            )
 
-        try:
-            # 设置输入数据
-            old_stdin = sys.stdin
-            if input_data:
-                sys.stdin = io.StringIO(input_data)
+            # 设置执行权限
+            set_executable_permission(entrypoint_path)
 
-            # 执行代码
-            with (
-                contextlib.redirect_stdout(stdout_capture),
-                contextlib.redirect_stderr(stderr_capture),
-            ):
-                # 创建一个命名空间来执行代码
-                namespace = {
-                    "__name__": "__main__",
-                    "__file__": self.get_default_filename(),
-                }
+            # 构建执行命令（只传递加密密钥）
+            command = [
+                config.PYTHON_PATH,
+                entrypoint_path,
+                encryption_key,
+            ]
 
-                try:
-                    exec(processed_code, namespace)
-                except SystemExit as e:
-                    exit_code = e.code if e.code is not None else 0
-                except Exception as e:
-                    exit_code = 1
-                    error_message = str(e)
+            # 不传递环境变量，保持原有的空环境
+            process_env = {}
 
-        except Exception as e:
-            exit_code = 1
-            error_message = str(e)
-        finally:
-            # 恢复标准输入
-            sys.stdin = old_stdin
+            try:
+                # 执行进程
+                process = subprocess.Popen(
+                    command,
+                    stdin=subprocess.PIPE if input_data else None,
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.PIPE,
+                    env=process_env,
+                    text=True,
+                    cwd=sandbox_dir,
+                )
 
-            # 恢复环境变量
-            for key in env_vars:
-                if key in old_env:
-                    if old_env[key] is not None:
-                        os.environ[key] = old_env[key]
-                    else:
-                        os.environ.pop(key, None)
+                stdout, stderr = process.communicate(
+                    input=input_data if input_data else None,
+                    timeout=config.CODE_EXECUTION_TIMEOUT,
+                )
 
-        # 获取输出
-        stdout = stdout_capture.getvalue()
-        stderr = stderr_capture.getvalue()
+                execution_time = time.time() - start_time
 
-        # 计算执行时间
-        execution_time = time.time() - start_time
+                return ExecutionResult(
+                    status=(
+                        ExecutionStatus.SUCCESS
+                        if process.returncode == 0
+                        else ExecutionStatus.ERROR
+                    ),
+                    stdout=stdout or "",
+                    stderr=stderr or "",
+                    execution_time=execution_time,
+                    exit_code=process.returncode,
+                    error_message=stderr if process.returncode != 0 else None,
+                )
 
-        # 确定执行状态
-        if error_message:
-            status = ExecutionStatus.ERROR
-        elif exit_code != 0:
-            status = ExecutionStatus.ERROR
-        else:
-            status = ExecutionStatus.SUCCESS
+            except subprocess.TimeoutExpired:
+                execution_time = time.time() - start_time
+                return ExecutionResult(
+                    status=ExecutionStatus.TIMEOUT,
+                    stdout="",
+                    stderr="Execution timed out",
+                    execution_time=execution_time,
+                    exit_code=-1,
+                    error_message="Execution timed out",
+                )
 
-        return ExecutionResult(
-            status=status,
-            stdout=stdout,
-            stderr=stderr,
-            execution_time=execution_time,
-            memory_used_mb=0.0,
-            exit_code=exit_code,
-            error_message=error_message,
-        )
+            except Exception as e:
+                execution_time = time.time() - start_time
+                return ExecutionResult(
+                    status=ExecutionStatus.ERROR,
+                    stdout="",
+                    stderr=str(e),
+                    execution_time=execution_time,
+                    exit_code=-1,
+                    error_message=str(e),
+                )

@@ -89,7 +89,9 @@
         "recvmsg",
         "shutdown",
         "getpeername",
-        "getsockname"
+        "getsockname",
+        "execve",
+        "execveat"
       ],
       "action": "SCMP_ACT_ALLOW"
     }

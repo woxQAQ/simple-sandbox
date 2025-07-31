@@ -47,10 +47,6 @@ def main():
         help="服务器监听地址 (默认: 0.0.0.0)",
     )
 
-    parser.add_argument(
-        "-v", "--verbose", action="store_true", help="启用详细日志输出"
-    )
-
     parser.add_argument("--debug", action="store_true", help="启用调试模式")
 
     args = parser.parse_args()
@@ -58,10 +54,8 @@ def main():
     # 设置日志级别
     if args.debug:
         log_level = logging.DEBUG
-    elif args.verbose:
-        log_level = logging.INFO
     else:
-        log_level = logging.WARNING
+        log_level = logging.INFO
 
     setup_logging(log_level)
 

@@ -6,6 +6,7 @@ readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
     "astor>=0.8.1",
+    "python-dotenv>=1.1.1",
 ]
 
 # [build-system]

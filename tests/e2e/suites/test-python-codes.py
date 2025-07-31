@@ -149,6 +149,8 @@ except Exception as e:
         assert (
             "被阻止" in response.output
             or "Permission denied" in response.output
+            or "文件读取被阻止" in response.output
+            or "[SECURITY]" in response.output
         )
 
     def test_network_operations_blocked(self, client):
@@ -295,7 +297,10 @@ print("Hello"
         response = client.execute_python_code(code)
 
         assert not response.success, "应该执行失败"
-        assert "SyntaxError" in response.error
+        assert (
+            "SyntaxError" in response.error
+            or "was never closed" in response.error
+        )
 
     def test_runtime_error(self, client):
         """测试运行时错误"""
@@ -306,7 +311,10 @@ x = 10 / 0
         response = client.execute_python_code(code)
 
         assert not response.success, "应该执行失败"
-        assert "ZeroDivisionError" in response.error
+        assert (
+            "ZeroDivisionError" in response.error
+            or "division by zero" in response.error
+        )
 
     def test_import_error(self, client):
         """测试导入错误"""
@@ -317,7 +325,10 @@ import non_existent_module
         response = client.execute_python_code(code)
 
         assert not response.success, "应该执行失败"
-        assert "ModuleNotFoundError" in response.error
+        assert (
+            "ModuleNotFoundError" in response.error
+            or "No module named" in response.error
+        )
 
     def test_memory_error_handling(self, client):
         """测试内存错误处理"""

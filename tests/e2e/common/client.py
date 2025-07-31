@@ -128,10 +128,15 @@ class SandboxClient:
 
             if response.status_code == 200:
                 data = response.json()
+                # API返回的是stdout而不是output
+                output = data.get("stdout") or data.get("output", "")
+                success = data.get("status") == "success"
+
                 return ExecuteResponse(
-                    success=True,
-                    output=data.get("output"),
-                    execution_time=execution_time,
+                    success=success,
+                    output=output,
+                    error=data.get("stderr") or data.get("error"),
+                    execution_time=data.get("execution_time", execution_time),
                     status_code=response.status_code,
                 )
             else:
