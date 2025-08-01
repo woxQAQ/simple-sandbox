@@ -40,7 +40,7 @@ ERROR_MESSAGES = {
 class SeccompInjectionError(Exception):
     """seccomp注入相关的异常"""
 
-    def __init__(self, error_code: int, message: str = None):
+    def __init__(self, error_code: int, message: str | None = None):
         self.error_code = error_code
         self.message = message or ERROR_MESSAGES.get(
             error_code, "Unknown error"
@@ -69,29 +69,28 @@ class SeccompInjector:
         self._load_library(library_path)
         self._setup_function_signatures()
 
-    def _find_library_path(self, language: str = None) -> str:
+    def _find_library_path(self, language: str | None = None) -> str:
         """查找seccomp注入器共享库"""
         # Linux共享库文件名
         if language:
-            lib_names = [
-                f"libseccomp_injector_{language}.so",
-            ]
+            lib_name = f"libseccomp_injector_{language}.so"
         else:
-            lib_names = [
-                "libseccomp_injector.so",
-            ]
+            lib_name = "libseccomp_injector.so"
 
-        # 搜索路径 - 固定为 /app/build/lib
-        search_path = Path("/app/build/lib")
+        search_path = Path(f"/var/sandbox/sandbox-{language}")
 
-        for lib_name in lib_names:
-            lib_path = search_path / lib_name
-            if lib_path.exists():
-                return str(lib_path)
+        if not search_path.exists():
+            raise FileNotFoundError(
+                f"Could not find build directory. Searched: {search_path}"
+            )
+
+        lib_path = search_path / lib_name
+        if lib_path.exists():
+            return str(lib_path)
 
         raise FileNotFoundError(
             f"Could not find seccomp injector library in {search_path}. "
-            f"Looking for: {lib_names}"
+            f"Looking for: {lib_name}"
         )
 
     def _load_library(self, library_path: Optional[str]):

@@ -10,6 +10,10 @@ class LanguageRuntime(ABC):
     def __init__(self, name: str):
         self.name = name
 
+    def get_language(self) -> str:
+        """获取运行时语言名称"""
+        return self.name
+
     @abstractmethod
     def execute(
         self,

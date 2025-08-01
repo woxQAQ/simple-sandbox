@@ -51,7 +51,7 @@ class NodeJSRuntime(LanguageRuntime):
         self,
         code: str,
         input_data: str = "",
-        env_vars: Dict[str, str] = None,
+        env_vars: Dict[str, str] | None = None,
     ) -> ExecutionResult:
         """执行Node.js代码"""
         start_time = time.time()

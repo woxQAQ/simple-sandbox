@@ -130,82 +130,315 @@ print(f"sin(π/2): {sin_value}")
 
 
 class TestPythonSecurity:
-    """Python安全限制测试"""
+    """Python安全限制测试 - 基于seccomp系统调用过滤"""
 
-    def test_file_operations_blocked(self, client):
-        """测试文件操作被阻止"""
+    def test_ptrace_blocked(self, client):
+        """测试ptrace系统调用被阻止"""
         code = """
-# 尝试读取系统文件
+import ctypes
+import os
+import errno
+
+# 尝试使用ptrace系统调用
+libc = ctypes.CDLL(None)
+ptrace = libc.ptrace
+ptrace.argtypes = [ctypes.c_ulong, ctypes.c_int, ctypes.c_void_p, ctypes.c_void_p]
+ptrace.restype = ctypes.c_long
+
 try:
-    with open('/etc/passwd', 'r') as f:
-        content = f.read()
-        print("文件读取成功")
+    # PTRACE_TRACEME = 0
+    result = ptrace(0, 0, None, None)
+    if result == -1:
+        error = ctypes.get_errno()
+        if error == errno.EPERM:
+            print("ptrace被seccomp规则阻止: Operation not permitted")
+        else:
+            print(f"ptrace失败，错误码: {error}")
+    else:
+        print("ptrace调用成功")
 except Exception as e:
-    print(f"文件读取被阻止: {e}")
+    print(f"ptrace调用异常: {e}")
 """
         response = client.execute_python_code(code)
 
         assert response.success, f"执行失败: {response.error}"
         assert (
-            "被阻止" in response.output
-            or "Permission denied" in response.output
-            or "文件读取被阻止" in response.output
-            or "[SECURITY]" in response.output
+            "被seccomp规则阻止" in response.output
+            or "Operation not permitted" in response.output
         )
 
-    def test_network_operations_blocked(self, client):
-        """测试网络操作被阻止"""
+    def test_chmod_blocked(self, client):
+        """测试chmod系统调用被阻止"""
         code = """
-import socket
-
-try:
-    # 尝试创建socket连接
-    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    sock.connect(('google.com', 80))
-    print("网络连接成功")
-    sock.close()
-except Exception as e:
-    print(f"网络操作被阻止: {e}")
-"""
-        response = client.execute_python_code(code)
-
-        assert response.success, f"执行失败: {response.error}"
-        assert "被阻止" in response.output
-
-    def test_system_commands_blocked(self, client):
-        """测试系统命令被阻止"""
-        code = """
+import ctypes
 import os
-import subprocess
+import errno
+
+# 尝试使用chmod系统调用
+libc = ctypes.CDLL(None)
+chmod = libc.chmod
+chmod.argtypes = [ctypes.c_char_p, ctypes.c_uint]
+chmod.restype = ctypes.c_int
 
 try:
-    # 尝试执行系统命令
-    result = subprocess.run(['ls', '-la'], capture_output=True, text=True)
-    print("命令执行成功")
-    print(result.stdout)
+    # 尝试修改文件权限
+    result = chmod(b"/tmp/test.txt", 0o777)
+    if result == -1:
+        error = ctypes.get_errno()
+        if error == errno.EPERM:
+            print("chmod被seccomp规则阻止: Operation not permitted")
+        else:
+            print(f"chmod失败，错误码: {error}")
+    else:
+        print("chmod调用成功")
 except Exception as e:
-    print(f"系统命令被阻止: {e}")
+    print(f"chmod调用异常: {e}")
 """
         response = client.execute_python_code(code)
 
         assert response.success, f"执行失败: {response.error}"
-        assert "被阻止" in response.output
+        assert (
+            "被seccomp规则阻止" in response.output
+            or "Operation not permitted" in response.output
+        )
 
-    def test_import_dangerous_modules_blocked(self, client):
-        """测试危险模块导入被阻止"""
+    def test_mkdir_blocked(self, client):
+        """测试mkdir系统调用被阻止"""
         code = """
+import ctypes
+import errno
+
+# 尝试使用mkdir系统调用
+libc = ctypes.CDLL(None)
+mkdir = libc.mkdir
+mkdir.argtypes = [ctypes.c_char_p, ctypes.c_uint]
+mkdir.restype = ctypes.c_int
+
 try:
-    import os
-    # 尝试执行危险操作
-    os.system('echo "dangerous"')
-    print("危险操作执行成功")
+    # 尝试创建目录
+    result = mkdir(b"/tmp/test_dir", 0o755)
+    if result == -1:
+        error = ctypes.get_errno()
+        if error == errno.EPERM:
+            print("mkdir被seccomp规则阻止: Operation not permitted")
+        else:
+            print(f"mkdir失败，错误码: {error}")
+    else:
+        print("mkdir调用成功")
 except Exception as e:
-    print(f"危险操作被阻止: {e}")
+    print(f"mkdir调用异常: {e}")
 """
         response = client.execute_python_code(code)
 
         assert response.success, f"执行失败: {response.error}"
-        assert "被阻止" in response.output
+        assert (
+            "被seccomp规则阻止" in response.output
+            or "Operation not permitted" in response.output
+        )
+
+    def test_unlink_blocked(self, client):
+        """测试unlink系统调用被阻止"""
+        code = """
+import ctypes
+import errno
+
+# 尝试使用unlink系统调用
+libc = ctypes.CDLL(None)
+unlink = libc.unlink
+unlink.argtypes = [ctypes.c_char_p]
+unlink.restype = ctypes.c_int
+
+try:
+    # 尝试删除文件
+    result = unlink(b"/tmp/nonexistent.txt")
+    if result == -1:
+        error = ctypes.get_errno()
+        if error == errno.EPERM:
+            print("unlink被seccomp规则阻止: Operation not permitted")
+        else:
+            print(f"unlink失败，错误码: {error}")
+    else:
+        print("unlink调用成功")
+except Exception as e:
+    print(f"unlink调用异常: {e}")
+"""
+        response = client.execute_python_code(code)
+
+        assert response.success, f"执行失败: {response.error}"
+        assert (
+            "被seccomp规则阻止" in response.output
+            or "Operation not permitted" in response.output
+        )
+
+    def test_rename_blocked(self, client):
+        """测试rename系统调用被阻止"""
+        code = """
+import ctypes
+import errno
+
+# 尝试使用rename系统调用
+libc = ctypes.CDLL(None)
+rename = libc.rename
+rename.argtypes = [ctypes.c_char_p, ctypes.c_char_p]
+rename.restype = ctypes.c_int
+
+try:
+    # 尝试重命名文件
+    result = rename(b"/tmp/nonexistent1.txt", b"/tmp/nonexistent2.txt")
+    if result == -1:
+        error = ctypes.get_errno()
+        if error == errno.EPERM:
+            print("rename被seccomp规则阻止: Operation not permitted")
+        else:
+            print(f"rename失败，错误码: {error}")
+    else:
+        print("rename调用成功")
+except Exception as e:
+    print(f"rename调用异常: {e}")
+"""
+        response = client.execute_python_code(code)
+
+        assert response.success, f"执行失败: {response.error}"
+        assert (
+            "被seccomp规则阻止" in response.output
+            or "Operation not permitted" in response.output
+        )
+
+    def test_rmdir_blocked(self, client):
+        """测试rmdir系统调用被阻止"""
+        code = """
+import ctypes
+import errno
+
+# 尝试使用rmdir系统调用
+libc = ctypes.CDLL(None)
+rmdir = libc.rmdir
+rmdir.argtypes = [ctypes.c_char_p]
+rmdir.restype = ctypes.c_int
+
+try:
+    # 尝试删除目录
+    result = rmdir(b"/tmp/nonexistent_dir")
+    if result == -1:
+        error = ctypes.get_errno()
+        if error == errno.EPERM:
+            print("rmdir被seccomp规则阻止: Operation not permitted")
+        else:
+            print(f"rmdir失败，错误码: {error}")
+    else:
+        print("rmdir调用成功")
+except Exception as e:
+    print(f"rmdir调用异常: {e}")
+"""
+        response = client.execute_python_code(code)
+
+        assert response.success, f"执行失败: {response.error}"
+        assert (
+            "被seccomp规则阻止" in response.output
+            or "Operation not permitted" in response.output
+        )
+
+    def test_mount_blocked(self, client):
+        """测试mount系统调用被阻止"""
+        code = """
+import ctypes
+import errno
+
+# 尝试使用mount系统调用
+libc = ctypes.CDLL(None)
+mount = libc.mount
+mount.argtypes = [ctypes.c_char_p, ctypes.c_char_p, ctypes.c_char_p, ctypes.c_ulong, ctypes.c_void_p]
+mount.restype = ctypes.c_int
+
+try:
+    # 尝试挂载proc文件系统
+    result = mount(b"proc", b"/tmp", b"proc", 0, None)
+    if result == -1:
+        error = ctypes.get_errno()
+        if error == errno.EPERM:
+            print("mount被seccomp规则阻止: Operation not permitted")
+        else:
+            print(f"mount失败，错误码: {error}")
+    else:
+        print("mount调用成功")
+except Exception as e:
+    print(f"mount调用异常: {e}")
+"""
+        response = client.execute_python_code(code)
+
+        assert response.success, f"执行失败: {response.error}"
+        assert (
+            "被seccomp规则阻止" in response.output
+            or "Operation not permitted" in response.output
+        )
+
+    def test_chown_blocked(self, client):
+        """测试chown系统调用被阻止"""
+        code = """
+import ctypes
+import errno
+
+# 尝试使用chown系统调用
+libc = ctypes.CDLL(None)
+chown = libc.chown
+chown.argtypes = [ctypes.c_char_p, ctypes.c_uint, ctypes.c_uint]
+chown.restype = ctypes.c_int
+
+try:
+    # 尝试修改文件所有者
+    result = chown(b"/tmp/test.txt", 1000, 1000)
+    if result == -1:
+        error = ctypes.get_errno()
+        if error == errno.EPERM:
+            print("chown被seccomp规则阻止: Operation not permitted")
+        else:
+            print(f"chown失败，错误码: {error}")
+    else:
+        print("chown调用成功")
+except Exception as e:
+    print(f"chown调用异常: {e}")
+"""
+        response = client.execute_python_code(code)
+
+        assert response.success, f"执行失败: {response.error}"
+        assert (
+            "被seccomp规则阻止" in response.output
+            or "Operation not permitted" in response.output
+        )
+
+    def test_symlink_blocked(self, client):
+        """测试symlink系统调用被阻止"""
+        code = """
+import ctypes
+import errno
+
+# 尝试使用symlink系统调用
+libc = ctypes.CDLL(None)
+symlink = libc.symlink
+symlink.argtypes = [ctypes.c_char_p, ctypes.c_char_p]
+symlink.restype = ctypes.c_int
+
+try:
+    # 尝试创建符号链接
+    result = symlink(b"/tmp/target", b"/tmp/link")
+    if result == -1:
+        error = ctypes.get_errno()
+        if error == errno.EPERM:
+            print("symlink被seccomp规则阻止: Operation not permitted")
+        else:
+            print(f"symlink失败，错误码: {error}")
+    else:
+        print("symlink调用成功")
+except Exception as e:
+    print(f"symlink调用异常: {e}")
+"""
+        response = client.execute_python_code(code)
+
+        assert response.success, f"执行失败: {response.error}"
+        assert (
+            "被seccomp规则阻止" in response.output
+            or "Operation not permitted" in response.output
+        )
 
 
 class TestPythonAllowedOperations:

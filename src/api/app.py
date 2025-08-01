@@ -145,7 +145,6 @@ class SimpleHTTPRequestHandler(BaseHTTPRequestHandler):
                 )
                 return
 
-  
             language = request_data["language"]
             code = request_data["code"]
             input_data = request_data.get("input_data", "")
@@ -164,14 +163,12 @@ class SimpleHTTPRequestHandler(BaseHTTPRequestHandler):
                 env_vars=env_vars,
             )
 
-    
             # 返回响应
             response = {
                 "status": result.status.value,
                 "stdout": result.stdout,
                 "stderr": result.stderr,
                 "execution_time": result.execution_time,
-                "memory_used": result.memory_used_mb,
                 "exit_code": result.exit_code,
                 "error": result.error_message,
             }

@@ -58,15 +58,12 @@ RUN echo "deb ${DEBIAN_MIRROR}" > /etc/apt/sources.list && \
 
 COPY . /app
 
-# 复制环境变量配置文件
+# copy default env files
 COPY .env.example /app/.env
 
-
 RUN /app/scripts/install_nodejs.sh ${TARGETARCH}
-# copy language runtime from builder
-COPY --from=builder /opt/venv /opt/venv
-COPY --from=builder /var/sandbox
 
+# copy the venv
 ENV PATH="/opt/venv/bin:/opt/node/bin:$PATH"
 
 COPY --from=builder /app/build/lib /app/build/lib
