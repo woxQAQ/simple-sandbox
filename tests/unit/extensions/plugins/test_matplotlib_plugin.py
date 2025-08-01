@@ -5,7 +5,7 @@ Matplotlib插件测试
 
 import ast
 
-from src.runtime.extensions.plugins.python import MatplotlibASTPlugin
+from src.runtime.common.plugins.python import MatplotlibASTPlugin
 
 
 class TestMatplotlibASTPlugin:

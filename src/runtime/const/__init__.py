@@ -1,2 +1,0 @@
-PYTHON = "python"
-NODEJS = "nodejs"

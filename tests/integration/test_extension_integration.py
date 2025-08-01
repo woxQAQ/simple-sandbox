@@ -6,9 +6,9 @@
 import ast
 from unittest.mock import Mock, patch
 
-from src.runtime.extensions.node import NodeJSASTManager
-from src.runtime.extensions.python import PythonASTRegistry
-from src.runtime.transformer.python import PythonASTContext
+from src.runtime.nodejs.extensions import NodeJSASTManager
+from src.runtime.python.extensions import PythonASTRegistry
+from src.runtime.python.transformer import PythonASTContext
 
 
 class MockPythonASTPlugin:

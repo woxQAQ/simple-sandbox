@@ -3,9 +3,9 @@
 测试代码执行、结果收集、资源限制等功能
 """
 
-from src.runtime.models import ExecutionStatus
-from src.runtime.nodejs_runtime import NodeJSRuntime
-from src.runtime.python_runtime import PythonRuntime
+from src.runtime.common.models import ExecutionStatus
+from src.runtime.nodejs.runtime import NodeJSRuntime
+from src.runtime.python.runtime import PythonRuntime
 
 
 class TestPythonRuntimeIntegration:

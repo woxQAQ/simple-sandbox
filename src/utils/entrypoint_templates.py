@@ -18,7 +18,7 @@ class EntrypointTemplates:
         return f'''#!/usr/bin/env python3
 """
 代码执行入口点
-支持解密和执行加密的用户代码，集成seccomp安全限制
+支持解密和执行加密的用户代码
 """
 
 import base64
@@ -27,40 +27,6 @@ import hmac
 import json
 import os
 import sys
-
-def apply_seccomp_security():
-    """应用seccomp安全限制"""
-    try:
-        # 尝试导入seccomp模块
-        try:
-            from src.security import SecurityManager
-            security_manager = SecurityManager(library_dir="/var/sandbox/python/libseccomp_injector_python.so")
-            security_manager.setup_security_profile("python", {uid}, {gid})
-        except ImportError:
-            # 如果seccomp模块不可用，尝试使用ctypes直接调用
-            import ctypes
-            import errno
-
-            # 尝试加载seccomp注入器库
-            try:
-                lib_path = "/var/sandbox/python/libseccomp_injector_python.so"
-                if os.path.exists(lib_path):
-                    lib = ctypes.CDLL(lib_path)
-
-                    # 设置函数签名
-                    lib.inject_seccomp_profile.argtypes = [ctypes.c_uint32, ctypes.c_uint32]
-                    lib.inject_seccomp_profile.restype = ctypes.c_int
-
-                    # 调用seccomp注入
-                    result = lib.inject_seccomp_profile({uid}, {gid})
-                    if result != 0:
-                        print(f"seccomp注入失败，错误码: {{result}}", file=sys.stderr)
-                else:
-                    print("seccomp注入器库未找到", file=sys.stderr)
-            except Exception as e:
-                print(f"seccomp安全设置失败: {{e}}", file=sys.stderr)
-    except Exception as e:
-        print(f"安全模块初始化失败: {{e}}", file=sys.stderr)
 
 def decrypt_code(encrypted_data: dict, key_b64: str) -> str:
     """解密代码"""
@@ -88,9 +54,6 @@ def decrypt_code(encrypted_data: dict, key_b64: str) -> str:
 def main():
     """主函数"""
     try:
-        # 应用seccomp安全限制
-        apply_seccomp_security()
-
         # 从命令行参数获取加密密钥
         key_b64 = sys.argv[1]
 
@@ -129,34 +92,12 @@ if __name__ == "__main__":
         return f"""#!/usr/bin/env node
 /**
  * 代码执行入口点
- * 支持解密和执行加密的用户代码，集成seccomp安全限制
+ * 支持解密和执行加密的用户代码
  */
 
 const crypto = require('crypto');
 const fs = require('fs');
 const path = require('path');
-
-function applySeccompSecurity() {{
-    try {{
-        // 尝试使用原生模块加载seccomp注入器
-        const libPath = '/var/sandbox/nodejs/libseccomp_injector_nodejs.so';
-
-        if (fs.existsSync(libPath)) {{
-            // 使用Node.js的原生模块加载机制
-            try {{
-                // 在实际的实现中，这里会使用原生扩展模块
-                // 现在我们记录安全设置信息
-                console.error('seccomp安全限制已启用');
-            }} catch (e) {{
-                console.error('seccomp注入器加载失败: ' + e.message);
-            }}
-        }} else {{
-            console.error('seccomp注入器库未找到');
-        }}
-    }} catch (e) {{
-        console.error('安全模块初始化失败: ' + e.message);
-    }}
-}}
 
 function decryptCode(encryptedData, keyB64) {{
     // 解密代码
@@ -186,9 +127,6 @@ function decryptCode(encryptedData, keyB64) {{
 
 function main() {{
     try {{
-        // 应用seccomp安全限制
-        applySeccompSecurity();
-
         // 从命令行参数获取加密密钥
         const keyB64 = process.argv[2];
 

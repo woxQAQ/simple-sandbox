@@ -5,7 +5,7 @@ Python控制台插件测试
 
 import ast
 
-from src.runtime.extensions.plugins.python import PythonConsoleASTPlugin
+from src.runtime.common.plugins.python import PythonConsoleASTPlugin
 
 
 class TestPythonConsoleASTPlugin:

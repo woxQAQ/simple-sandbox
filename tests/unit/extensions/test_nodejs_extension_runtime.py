@@ -6,7 +6,7 @@ Node.js扩展运行时测试
 import subprocess
 from unittest.mock import Mock, patch
 
-from src.runtime.extensions.node import (
+from src.runtime.nodejs.extensions import (
     NodeASTPlugin,
     NodeJSASTManager,
 )

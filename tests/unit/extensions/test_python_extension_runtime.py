@@ -6,7 +6,7 @@
 import ast
 from unittest.mock import patch
 
-from src.runtime.transformer.python import (
+from src.runtime.python.transformer import (
     PythonASTContext,
     PythonASTPlugin,
     PythonASTTransformer,

@@ -37,8 +37,8 @@ def process_dir(src: str, dst: str):
 
         for root, dirs, files in os.walk(src):
             rel_path = os.path.relpath(root, src)
-            if rel_path == '.':
-                rel_path = ''
+            if rel_path == ".":
+                rel_path = ""
             dest_root = os.path.join(dest_dir, rel_path)
             for file in files:
                 src_file = os.path.join(root, file)
