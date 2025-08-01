@@ -1,7 +1,4 @@
 #!/usr/bin/env bash
-set -o errexit
-set -o pipefail
-set -o nounset
 
 if [ "$TARGET_ARCH" = "amd64" ]; then
     NODEJS_ARCH="x64"
@@ -24,13 +21,17 @@ ln -s /opt/${NODE_TAR_NAME}/bin/node /usr/local/bin/node
 rm -f /opt/${NODE_TAR_NAME}.tar.xz
 
 echo "create sandbox user"
-sh /app/scripts/create_sandbox_user.sh
+source /app/scripts/create_sandbox_user.sh
 
 if [ -z "${SANDBOX_GROUP_ID}" ]; then
-    echo "env variable ${SANDBOX_GROUP_ID} has not been set"
+    echo "env variable SANDBOX_GROUP_ID has not been set"
+    exit 1
+fi
 
 if [ -z "${SANDBOX_USER_ID}" ]; then
-    echo "env variable ${SANDBOX_GROUP_ID} has not been set"
+    echo "env variable SANDBOX_GROUP_ID has not been set"
+    exit 1
+fi
 
 echo "start sandbox server..."
 # 启动简化HTTP服务器

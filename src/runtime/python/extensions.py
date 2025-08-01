@@ -5,7 +5,7 @@ Python原生AST插件系统
 
 from typing import List
 
-from src.runtime.common.plugins.python import (
+from src.runtime.python.plugins import (
     MatplotlibASTPlugin,
     PythonConsoleASTPlugin,
 )

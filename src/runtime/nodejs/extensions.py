@@ -5,11 +5,10 @@ Node.js原生AST插件系统
 """
 
 import json
-import os
 import subprocess
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Dict
+from typing import Any, Dict, Optional
 
 
 @dataclass
@@ -20,7 +19,7 @@ class NodeASTPlugin:
 
 def get_plugins():
     """获取所有插件"""
-    path = Path.cwd() / "plugins/nodejs"
+    path = Path.cwd() / "plugins"
     plugins = []
     for file in path.glob("*.js"):
         if file.name != "index.js":
@@ -46,14 +45,11 @@ class NodeJSASTManager:
     """Node.js AST管理器 - 通过Node进程调用acorn"""
 
     def __init__(self):
-        # 正确的路径是 src/runtime/transformer/nodejs/transformer.js
-        current_dir = os.path.dirname(__file__)  # src/runtime/extensions
-        runtime_dir = os.path.dirname(current_dir)  # src/runtime
-        self.js_transformer_path = os.path.join(
-            runtime_dir, "transformer/nodejs/transformer.js"
-        )
+        pass
 
-    def transform_code(self, code: str, context: Dict[str, Any] = None) -> str:
+    def transform_code(
+        self, code: str, context: Optional[Dict[str, Any]] = None
+    ) -> str:
         """通过Node.js进程转换JavaScript代码"""
         if context is None:
             context = {}
@@ -61,7 +57,7 @@ class NodeJSASTManager:
         try:
             # 调用Node.js转换器
             result = subprocess.run(
-                ["node", self.js_transformer_path],
+                ["node", "./src/runtime/nodejs/transformer.js"],
                 input=json.dumps({"code": code, "context": context}),
                 text=True,
                 capture_output=True,

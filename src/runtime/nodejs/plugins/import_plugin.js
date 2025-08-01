@@ -53,13 +53,13 @@ if (originalRequire) {
         const module = originalRequire(id);
         const duration = Date.now() - start;
         console.log(\`[\${new Date().toISOString()}] Loaded module: \${id} (\${duration}ms)\`);
-        
+
         // 危险模块警告
         const dangerousModules = ["fs", "child_process", "cluster", "worker_threads"];
         if (dangerousModules.includes(id)) {
             console.warn(\`Warning: Module '\${id}' is restricted in sandbox environment\`);
         }
-        
+
         return module;
     };
 }

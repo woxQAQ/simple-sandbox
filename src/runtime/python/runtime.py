@@ -46,6 +46,8 @@ class PythonRuntime(LanguageRuntime):
 
     def _setup_seccomp_security(self):
         """在子进程中设置seccomp安全限制"""
+        # 检查是否启用了seccomp
+
         try:
             # 使用安全管理器设置seccomp过滤器
             create_secure_process(
@@ -55,14 +57,14 @@ class PythonRuntime(LanguageRuntime):
                 library_dir="/var/sandbox/python",
             )
         except Exception as e:
-            # 如果seccomp设置失败，记录错误但继续执行
-            print(f"seccomp安全设置失败: {e}", file=sys.stderr)
+            print(f"Warning: seccomp安全设置失败: {e}", file=sys.stderr)
+            pass
 
     def execute(
         self,
         code: str,
         input_data: str = "",
-        env_vars: Dict[str, str] = None,
+        env_vars: Dict[str, str] | None = None,
     ) -> ExecutionResult:
         """执行Python代码"""
         start_time = time.time()

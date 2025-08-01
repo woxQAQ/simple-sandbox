@@ -3,7 +3,7 @@
 
 # Build stage
 FROM python:3.11.13-slim-bookworm
-ARG DEBIAN_MIRROR="http://deb.debian.org/debian"
+ARG DEBIAN_MIRROR="deb https://mirrors.tuna.tsinghua.edu.cn/debian/ bookworm main contrib non-free non-free-firmware"
 ENV NODEJS_VERSION=v20.11.0
 ENV TARGET_ARCH="amd64"
 WORKDIR /app
@@ -11,7 +11,7 @@ COPY . /app
 COPY .env.example /app/.env
 
 # 安装构建依赖
-RUN echo "deb ${DEBIAN_MIRROR} bookworm main" > /etc/apt/sources.list && \
+RUN echo "${DEBIAN_MIRROR}" > /etc/apt/sources.list && \
     apt update && apt install -y --no-install-recommends \
     libseccomp-dev \
     libsqlite3-0 \
@@ -42,7 +42,7 @@ ENV PATH="/opt/venv/bin:/opt/node/bin:$PATH"
 
 # RUN cd /app/src/runtime/transformer/nodejs && npm install
 RUN . /opt/venv/bin/activate && pip install --no-deps -e . && \
-    pip install matplotlib numpy && \
+    pip install -i https://pypi.mirrors.ustc.edu.cn/simple matplotlib numpy && \
     rm -rf /tmp/*
 
 # 暴露端口

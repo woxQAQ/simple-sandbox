@@ -5,7 +5,7 @@
 
 class ConsolePlugin {
     constructor() {
-        this.name = 'console_plugin';   
+        this.name = 'console_plugin';
         this.priority = 90;
     }
 
