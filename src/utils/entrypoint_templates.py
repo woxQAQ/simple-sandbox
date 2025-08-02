@@ -85,10 +85,11 @@ def main():
                         # 在容器环境中，权限已经降低，这是正常的
                         pass
                     else:
-                        print(f"Warning: seccomp injection failed with code: {{result}}", file=sys.stderr)
+                        # 其他seccomp错误直接抛出异常并结束进程
+                        raise RuntimeError(f"seccomp injection failed with code: {{result}}")
         except Exception as e:
-            # 在容器环境中，seccomp设置失败是正常的
-            pass
+            # seccomp设置失败直接抛出异常并结束进程
+            raise RuntimeError(f"seccomp injection failed: {{e}}")
 
         # 执行用户代码
         exec_globals = {{
