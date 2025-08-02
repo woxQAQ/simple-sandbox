@@ -71,23 +71,63 @@ function transformCode(sourceCode, options = {}) {
  * 命令行接口
  */
 if (import.meta.url === `file://${process.argv[1]}`) {
-    const input = JSON.parse(await new Promise((resolve) => {
-        let data = '';
-        process.stdin.on('data', (chunk) => {
-            data += chunk;
-        });
-        process.stdin.on('end', () => {
-            resolve(data);
-        });
-    }));
+    // 检查是否有测试参数
+    const isTestMode = process.argv.includes('--test') || process.argv.includes('-t');
 
-    const result = transformCode(input.code, input.options || {});
+    if (isTestMode) {
+        // 测试模式 - 运行一个简单的测试
+        const testCode = 'console.log("Hello from Node.js transformer!");';
+        const result = transformCode(testCode, {});
 
-    console.log(JSON.stringify({
-        success: true,
-        transformed: result,
-        original: input.code
-    }));
+        console.log(JSON.stringify({
+            success: true,
+            transformed: result,
+            original: testCode
+        }));
+        process.exit(0);
+    }
+
+    // 管道输入模式 - 默认行为
+    try {
+        const input = JSON.parse(await new Promise((resolve, reject) => {
+            let data = '';
+            let timeout = setTimeout(() => {
+                reject(new Error('输入超时 - 请通过管道提供JSON数据'));
+            }, 100); // 100ms超时检测是否有输入
+
+            process.stdin.on('data', (chunk) => {
+                clearTimeout(timeout);
+                data += chunk;
+            });
+
+            process.stdin.on('end', () => {
+                clearTimeout(timeout);
+                resolve(data);
+            });
+
+            // 如果是TTY且没有数据，立即拒绝
+            if (process.stdin.isTTY) {
+                clearTimeout(timeout);
+                reject(new Error('交互式模式 - 请使用 --test 参数运行测试或通过管道提供输入'));
+            }
+        }));
+
+        const result = transformCode(input.code, input.options || {});
+
+        console.log(JSON.stringify({
+            success: true,
+            transformed: result,
+            original: input.code
+        }));
+    } catch (error) {
+        console.error(JSON.stringify({
+            success: false,
+            error: error.message,
+            usage: '使用方法: 1. 通过管道输入: echo \'{"code": "console.log(\\"Hello\\");"}\' | node transformer.js'
+                + ' 2. 测试模式: node transformer.js --test'
+        }));
+        process.exit(1);
+    }
 }
 
 export default { transformCode };
