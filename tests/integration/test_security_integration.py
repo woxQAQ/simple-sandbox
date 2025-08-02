@@ -307,7 +307,7 @@ class TestSecurityWithRuntime:
 
     def test_runtime_with_security(self):
         """测试运行时与安全模块集成"""
-        from src.runtime.python_runtime import PythonRuntime
+        from src.runtime.python.runtime import PythonRuntime
 
         # 创建运行时
         runtime = PythonRuntime()

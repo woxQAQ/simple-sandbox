@@ -77,19 +77,25 @@ class SeccompInjector:
         else:
             lib_name = "libseccomp_injector.so"
 
+        # 首先尝试生产环境路径
         search_path = Path(f"/var/sandbox/sandbox-{language}")
+        if search_path.exists():
+            lib_path = search_path / lib_name
+            if lib_path.exists():
+                return str(lib_path)
 
-        if not search_path.exists():
-            raise FileNotFoundError(
-                f"Could not find build directory. Searched: {search_path}"
-            )
-
-        lib_path = search_path / lib_name
-        if lib_path.exists():
-            return str(lib_path)
+        # 如果生产环境路径不存在，尝试开发环境build目录
+        build_path = (
+            Path(__file__).parent.parent.parent.parent / "build" / "lib"
+        )
+        if build_path.exists():
+            lib_path = build_path / lib_name
+            if lib_path.exists():
+                return str(lib_path)
 
         raise FileNotFoundError(
-            f"Could not find seccomp injector library in {search_path}. "
+            f"Could not find seccomp injector library. "
+            f"Searched: {search_path} and {build_path}. "
             f"Looking for: {lib_name}"
         )
 

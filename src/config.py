@@ -26,6 +26,119 @@ def load_env_file():
 load_env_file()
 
 
+class RuntimeConfig:
+    """运行时配置类"""
+
+    def __init__(self):
+        # 基础路径配置
+        self.base_dir = Path(__file__).parent
+        self.runtime_dir = self.base_dir / "runtime"
+
+        # 语言运行时路径
+        self.python_runtime_dir = self.runtime_dir / "python"
+        self.nodejs_runtime_dir = self.runtime_dir / "nodejs"
+
+        # Transformer路径
+        self.python_transformer_path = (
+            self.python_runtime_dir / "transformer.py"
+        )
+        self.nodejs_transformer_path = (
+            self.nodejs_runtime_dir / "transformer.js"
+        )
+
+        # 插件路径
+        self.python_plugins_dir = self.python_runtime_dir / "plugins"
+        self.nodejs_plugins_dir = self.nodejs_runtime_dir / "plugins"
+
+        # 安全库路径
+        self.python_security_lib_dir = "/var/sandbox/python"
+        self.nodejs_security_lib_dir = "/var/sandbox/nodejs"
+
+        # 用户ID和组ID
+        self.sandbox_uid = int(os.getenv("SANDBOX_USER_ID", "1000"))
+        self.sandbox_gid = int(os.getenv("SANDBOX_GROUP_ID", "1000"))
+
+        # 执行超时时间
+        self.transformer_timeout = int(os.getenv("TRANSFORMER_TIMEOUT", "10"))
+        self.code_execution_timeout = int(
+            os.getenv("CODE_EXECUTION_TIMEOUT", "30")
+        )
+
+        # 调试模式
+        self.debug_mode = os.getenv("DEBUG_MODE", "false").lower() == "true"
+
+        # 测试模式
+        self.test_mode = os.getenv("TEST_MODE", "false").lower() == "true"
+
+        # 如果是测试模式，使用测试路径
+        if self.test_mode:
+            self._setup_test_paths()
+
+    def _setup_test_paths(self):
+        """设置测试模式下的路径"""
+        # 在测试模式下，使用相对于当前工作目录的路径
+        current_dir = Path.cwd()
+        self.runtime_dir = current_dir / "src" / "runtime"
+        self.python_runtime_dir = self.runtime_dir / "python"
+        self.nodejs_runtime_dir = self.runtime_dir / "nodejs"
+        self.python_transformer_path = (
+            self.python_runtime_dir / "transformer.py"
+        )
+        self.nodejs_transformer_path = (
+            self.nodejs_runtime_dir / "transformer.js"
+        )
+        self.python_plugins_dir = self.python_runtime_dir / "plugins"
+        self.nodejs_plugins_dir = self.nodejs_runtime_dir / "plugins"
+
+        # 测试模式下使用build目录作为安全库路径
+        build_lib_dir = self.base_dir.parent / "build" / "lib"
+        self.python_security_lib_dir = str(build_lib_dir)
+        self.nodejs_security_lib_dir = str(build_lib_dir)
+
+    def get_python_command(self) -> str:
+        """获取Python命令"""
+        if self.test_mode:
+            return "python3"
+        return os.getenv("PYTHON_PATH", "python3")
+
+    def get_nodejs_command(self) -> str:
+        """获取Node.js命令"""
+        if self.test_mode:
+            return "node"
+        return os.getenv("NODEJS_PATH", "node")
+
+    def get_python_transformer_command(self) -> list:
+        """获取Python transformer命令"""
+        return [self.get_python_command(), str(self.python_transformer_path)]
+
+    def get_nodejs_transformer_command(self) -> list:
+        """获取Node.js transformer命令"""
+        return [self.get_nodejs_command(), str(self.nodejs_transformer_path)]
+
+    def to_dict(self) -> Dict[str, Any]:
+        """转换为字典"""
+        return {
+            "base_dir": str(self.base_dir),
+            "runtime_dir": str(self.runtime_dir),
+            "python_runtime_dir": str(self.python_runtime_dir),
+            "nodejs_runtime_dir": str(self.nodejs_runtime_dir),
+            "python_transformer_path": str(self.python_transformer_path),
+            "nodejs_transformer_path": str(self.nodejs_transformer_path),
+            "python_plugins_dir": str(self.python_plugins_dir),
+            "nodejs_plugins_dir": str(self.nodejs_plugins_dir),
+            "python_security_lib_dir": self.python_security_lib_dir,
+            "nodejs_security_lib_dir": self.nodejs_security_lib_dir,
+            "sandbox_uid": self.sandbox_uid,
+            "sandbox_gid": self.sandbox_gid,
+            "transformer_timeout": self.transformer_timeout,
+            "code_execution_timeout": self.code_execution_timeout,
+            "debug_mode": self.debug_mode,
+            "test_mode": self.test_mode,
+            "python_command": self.get_python_command(),
+            "nodejs_command": self.get_nodejs_command(),
+        }
+
+
 class Config:
     """项目配置类"""
 
@@ -68,3 +181,15 @@ class Config:
 
 # 全局配置实例
 config = Config()
+runtime_config = RuntimeConfig()
+
+
+def get_test_config() -> RuntimeConfig:
+    """获取测试配置"""
+    # 设置测试环境变量
+    os.environ["TEST_MODE"] = "true"
+    os.environ["DEBUG_MODE"] = "true"
+    os.environ["TRANSFORMER_TIMEOUT"] = "5"
+    os.environ["CODE_EXECUTION_TIMEOUT"] = "10"
+
+    return RuntimeConfig()

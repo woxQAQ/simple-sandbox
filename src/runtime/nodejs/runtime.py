@@ -1,11 +1,14 @@
-import subprocess
+import os
+import subprocess  # nosec B404
 import sys
 import time
+import traceback
 from typing import Dict, List
 
-from src.config import config
+from src.config import runtime_config
 from src.runtime.common.base import LanguageRuntime
 from src.runtime.common.models import ExecutionResult, ExecutionStatus
+from src.runtime.logging_config import create_runtime_logger
 from src.runtime.nodejs.extensions import nodejs_ast_manager
 from src.security import create_secure_process
 from src.utils import (
@@ -15,6 +18,8 @@ from src.utils import (
     temporary_sandbox_dir,
 )
 from src.utils.crypto_utils import CryptoUtils
+
+logger = create_runtime_logger(__name__)
 
 
 class NodeJSRuntime(LanguageRuntime):
@@ -26,11 +31,10 @@ class NodeJSRuntime(LanguageRuntime):
     def get_supported_extensions(self) -> List[str]:
         return [".js", ".mjs", ".cjs"]
 
-    def get_default_filename(self) -> str:
-        return "main.js"
-
     def preprocess_code(self, code: str) -> str:
         """预处理Node.js代码，使用插件系统处理所有增强功能"""
+        if runtime_config.debug_mode:
+            logger.debug(f"开始预处理Node.js代码 - 代码长度: {len(code)}")
         processed_code = code
 
         # 使用AST插件系统转换代码
@@ -39,28 +43,39 @@ class NodeJSRuntime(LanguageRuntime):
             processed_code = nodejs_ast_manager.transform_code(
                 processed_code, context
             )
+            if runtime_config.debug_mode:
+                logger.debug(
+                    f"Node.js代码预处理完成 - 转换后长度: {len(processed_code)}"
+                )
         except Exception as e:
             # 如果AST转换失败，继续使用原始代码
+            logger.warning(f"AST转换失败，使用原始代码: {e}")
             print(f"AST转换失败，使用原始代码: {e}")
 
         return processed_code
 
     def get_command(self, filename: str = None) -> List[str]:
         """获取Node.js执行命令"""
-        return [config.NODEJS_PATH]
+        return [runtime_config.get_nodejs_command()]
 
     def _setup_seccomp_security(self):
         """在子进程中设置seccomp安全限制"""
+        # 检查是否启用了seccomp
         try:
+            if runtime_config.debug_mode:
+                logger.debug("开始设置Node.js seccomp安全限制")
             # 使用安全管理器设置seccomp过滤器
             create_secure_process(
                 language="nodejs",
-                uid=1000,
-                gid=1000,
-                library_dir="/var/sandbox/nodejs",
+                uid=runtime_config.sandbox_uid,
+                gid=runtime_config.sandbox_gid,
+                library_dir=runtime_config.nodejs_security_lib_dir,
             )
+            if runtime_config.debug_mode:
+                logger.debug("Node.js seccomp安全限制设置成功")
         except Exception as e:
             # 如果seccomp设置失败，记录错误但继续执行
+            logger.error(f"Node.js seccomp安全设置失败: {e}")
             print(f"seccomp安全设置失败: {e}", file=sys.stderr)
 
     def execute(
@@ -71,43 +86,79 @@ class NodeJSRuntime(LanguageRuntime):
     ) -> ExecutionResult:
         """执行Node.js代码"""
         start_time = time.time()
+        if runtime_config.debug_mode:
+            logger.debug(
+                f"开始执行Node.js代码 - 代码长度: {len(code)} - 输入长度: {len(input_data)}"
+            )
 
         # 预处理代码
-        processed_code = self.preprocess_code(code)
+        try:
+            processed_code = self.preprocess_code(code)
+        except Exception as e:
+            execution_time = time.time() - start_time
+            logger.error(
+                f"Node.js代码预处理失败 - 错误: {e} - 耗时: {execution_time:.3f}s"
+            )
+            error_msg = (
+                f"Node.js代码预处理失败: {str(e)}\n{traceback.format_exc()}"
+            )
+            return ExecutionResult(
+                status=ExecutionStatus.ERROR,
+                stdout="",
+                stderr=error_msg,
+                execution_time=execution_time,
+                exit_code=-1,
+                error_message=error_msg,
+            )
 
         # 使用上下文管理器创建临时沙盒目录
         with temporary_sandbox_dir() as sandbox_dir:
-            # 创建加密工具实例
-            crypto_utils = CryptoUtils()
-
-            # 生成加密密钥并加密代码
-            encryption_key = crypto_utils.generate_encryption_key()
-            encrypted_code = crypto_utils.encrypt_code(
-                processed_code, encryption_key
-            )
-
-            # 创建entrypoint文件（直接嵌入加密代码）
-            entrypoint_path = create_file_in_dir(
-                sandbox_dir,
-                "entrypoint.js",
-                entrypoint_templates.create_entrypoint(
-                    "nodejs", encrypted_code, encryption_key, "1000", "1000"
-                ),
-            )
-
-            # 设置执行权限
-            set_executable_permission(entrypoint_path)
-
-            # 构建执行命令（只传递加密密钥）
-            node_command = self.get_command()
-            command = node_command + [entrypoint_path, encryption_key]
-
-            # 不传递环境变量，保持原有的空环境
-            process_env = {}
+            if runtime_config.debug_mode:
+                logger.debug(f"创建Node.js临时沙盒目录: {sandbox_dir}")
 
             try:
+                # 创建加密工具实例
+                crypto_utils = CryptoUtils()
+
+                # 生成加密密钥并加密代码
+                encryption_key = crypto_utils.generate_encryption_key()
+                encrypted_code = crypto_utils.encrypt_code(
+                    processed_code, encryption_key
+                )
+                if runtime_config.debug_mode:
+                    logger.debug("Node.js代码加密完成")
+
+                # 创建entrypoint文件（直接嵌入加密代码）
+                entrypoint_path = create_file_in_dir(
+                    sandbox_dir,
+                    "entrypoint.js",
+                    entrypoint_templates.create_entrypoint(
+                        "nodejs",
+                        encrypted_code,
+                        encryption_key,
+                        str(runtime_config.sandbox_uid),
+                        str(runtime_config.sandbox_gid),
+                    ),
+                )
+
+                # 设置执行权限
+                set_executable_permission(entrypoint_path)
+                if runtime_config.debug_mode:
+                    logger.debug(
+                        f"创建Node.js entrypoint文件: {entrypoint_path}"
+                    )
+
+                # 构建执行命令（只传递加密密钥）
+                node_command = self.get_command()
+                command = node_command + [entrypoint_path, encryption_key]
+                if runtime_config.debug_mode:
+                    logger.debug(f"Node.js执行命令: {' '.join(command)}")
+
+                # 传递基本的环境变量，包括PATH
+                process_env = {"PATH": os.environ.get("PATH", "")}
+
                 # 执行进程，在preexecfn中设置seccomp安全限制
-                process = subprocess.Popen(
+                process = subprocess.Popen(  # nosec B603
                     command,
                     stdin=subprocess.PIPE if input_data else None,
                     stdout=subprocess.PIPE,
@@ -120,7 +171,7 @@ class NodeJSRuntime(LanguageRuntime):
 
                 stdout, stderr = process.communicate(
                     input=input_data if input_data else None,
-                    timeout=config.CODE_EXECUTION_TIMEOUT,
+                    timeout=runtime_config.code_execution_timeout,
                 )
 
                 execution_time = time.time() - start_time
@@ -140,6 +191,9 @@ class NodeJSRuntime(LanguageRuntime):
 
             except subprocess.TimeoutExpired:
                 execution_time = time.time() - start_time
+                logger.warning(
+                    f"Node.js代码执行超时 - 耗时: {execution_time:.3f}s"
+                )
                 return ExecutionResult(
                     status=ExecutionStatus.TIMEOUT,
                     stdout="",
@@ -151,11 +205,17 @@ class NodeJSRuntime(LanguageRuntime):
 
             except Exception as e:
                 execution_time = time.time() - start_time
+                logger.error(
+                    f"Node.js代码执行异常 - 错误: {e} - 耗时: {execution_time:.3f}s"
+                )
+                error_msg = (
+                    f"Node.js代码执行异常: {str(e)}\n{traceback.format_exc()}"
+                )
                 return ExecutionResult(
                     status=ExecutionStatus.ERROR,
                     stdout="",
-                    stderr=str(e),
+                    stderr=error_msg,
                     execution_time=execution_time,
                     exit_code=-1,
-                    error_message=str(e),
+                    error_message=error_msg,
                 )

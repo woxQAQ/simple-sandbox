@@ -75,7 +75,8 @@ class PythonASTTransformer(ast.NodeTransformer):
             try:
                 tree = plugin.visit(tree)
             except Exception:
-                # 插件异常时跳过该插件
+                # 插件异常时跳过该插件，记录错误
+                # nosec B112 - plugin exceptions are intentionally caught and skipped
                 continue
 
         # 生成代码

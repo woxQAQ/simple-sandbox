@@ -5,10 +5,12 @@ Node.js原生AST插件系统
 """
 
 import json
-import subprocess
+import subprocess  # nosec B404
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Dict, Optional
+
+from src.config import runtime_config
 
 
 @dataclass
@@ -55,13 +57,13 @@ class NodeJSASTManager:
             context = {}
 
         try:
-            # 调用Node.js转换器
-            result = subprocess.run(
-                ["node", "./src/runtime/nodejs/transformer.js"],
+            # 调用Node.js转换器 - 使用配置路径
+            result = subprocess.run(  # nosec B603
+                runtime_config.get_nodejs_transformer_command(),
                 input=json.dumps({"code": code, "context": context}),
                 text=True,
                 capture_output=True,
-                timeout=10,
+                timeout=runtime_config.transformer_timeout,
             )
 
             if result.returncode == 0:

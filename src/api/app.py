@@ -30,7 +30,6 @@ request_lock = threading.Lock()
 
 
 class SimpleHTTPRequestHandler(BaseHTTPRequestHandler):
-
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.start_time = time.time()
@@ -38,6 +37,7 @@ class SimpleHTTPRequestHandler(BaseHTTPRequestHandler):
     def check_rate_limit(self, client_ip: str) -> bool:
         """检查请求速率限制"""
         if not config.ENABLE_RATE_LIMITING:
+            logger.debug(f"速率限制已禁用 - {client_ip}")
             return True
 
         with request_lock:
@@ -50,10 +50,16 @@ class SimpleHTTPRequestHandler(BaseHTTPRequestHandler):
 
             # 检查是否超过限制
             if len(timestamps) >= config.MAX_REQUESTS_PER_MINUTE:
+                logger.warning(
+                    f"速率限制触发 - {client_ip} - {len(timestamps)} 请求/分钟"
+                )
                 return False
 
             # 记录当前请求
             timestamps.append(now)
+            logger.debug(
+                f"速率限制检查通过 - {client_ip} - 当前请求数: {len(timestamps)}"
+            )
             return True
 
     def get_client_ip(self) -> str:
@@ -74,6 +80,8 @@ class SimpleHTTPRequestHandler(BaseHTTPRequestHandler):
             self._handle_root()
         elif self.path == "/api/v1/health":
             self._handle_health()
+        elif self.path == "/api/v1/languages":
+            self._handle_languages()
         else:
             self._handle_404()
 
@@ -98,6 +106,10 @@ class SimpleHTTPRequestHandler(BaseHTTPRequestHandler):
 
     def _send_error(self, message, status_code=400):
         """发送错误响应"""
+        logger.error(
+            f"发送错误响应 - {self.client_address[0]}:{self.client_address[1]} - "
+            f"状态码: {status_code} - 错误信息: {message}"
+        )
         self._send_json_response({"error": message}, status_code)
 
     def _handle_root(self):
@@ -114,17 +126,26 @@ class SimpleHTTPRequestHandler(BaseHTTPRequestHandler):
         }
         self._send_json_response(response)
 
+    def _handle_languages(self):
+        """处理支持的语言列表"""
+        response = {
+            "languages": [lang.value for lang in Language],
+        }
+        self._send_json_response(response)
+
     def _handle_execute(self):
         """处理代码执行"""
         client_ip = self.get_client_ip()
 
         # 检查速率限制
         if not self.check_rate_limit(client_ip):
+            logger.warning(f"速率限制超过 - {client_ip}")
             self._send_error("Rate limit exceeded. Too many requests.", 429)
             return
 
         # 检查并发限制
         if not request_semaphore.acquire(blocking=False):
+            logger.warning(f"并发请求限制超过 - {client_ip}")
             self._send_error("Server busy. Too many concurrent requests.", 503)
             return
 
@@ -132,14 +153,18 @@ class SimpleHTTPRequestHandler(BaseHTTPRequestHandler):
             # 读取请求体
             content_length = int(self.headers.get("Content-Length", 0))
             if content_length == 0:
+                logger.error(f"请求体为空 - {client_ip}")
                 self._send_error("Missing request body", 400)
                 return
 
             request_body = self.rfile.read(content_length)
             request_data = json.loads(request_body.decode("utf-8"))
 
+            logger.debug(f"请求体大小: {content_length} bytes - {client_ip}")
+
             # 验证必需字段
             if "language" not in request_data or "code" not in request_data:
+                logger.error(f"缺少必需字段 - {client_ip}")
                 self._send_error(
                     "Missing required fields: language and code", 400
                 )
@@ -153,6 +178,7 @@ class SimpleHTTPRequestHandler(BaseHTTPRequestHandler):
             # 获取运行时
             runtime = RUNTIMES.get(language)
             if not runtime:
+                logger.error(f"不支持的语言 - {client_ip} - 语言: {language}")
                 self._send_error(f"Unsupported language: {language}", 400)
                 return
 
@@ -161,6 +187,12 @@ class SimpleHTTPRequestHandler(BaseHTTPRequestHandler):
                 code=code,
                 input_data=input_data,
                 env_vars=env_vars,
+            )
+
+            logger.info(
+                f"代码执行完成 - {client_ip} - 状态: {result.status.value} - "
+                f"执行时间: {result.execution_time:.3f}s - "
+                f"退出码: {result.exit_code}"
             )
 
             # 返回响应
@@ -175,12 +207,12 @@ class SimpleHTTPRequestHandler(BaseHTTPRequestHandler):
             self._send_json_response(response)
 
         except json.JSONDecodeError as e:
-            logger.error(f"JSON decode error: {e}")
+            logger.error(f"JSON解析错误 - {client_ip} - 错误: {e}")
             if request_body:
-                logger.error(f"Request body: {request_body}")
+                logger.error(f"请求体: {request_body}")
             self._send_error("Invalid JSON", 400)
         except Exception as e:
-            logger.error(f"Execution error: {e}")
+            logger.error(f"执行错误 - {client_ip} - 错误: {e}")
             self._send_error(f"Internal server error: {str(e)}", 500)
         finally:
             # 释放信号量
@@ -194,7 +226,7 @@ class SimpleHTTPRequestHandler(BaseHTTPRequestHandler):
 def run_server(host=None, port=None):
     """启动HTTP服务器"""
     if host is None:
-        host = "0.0.0.0"
+        host = "127.0.0.1"
     if port is None:
         port = 8000
 

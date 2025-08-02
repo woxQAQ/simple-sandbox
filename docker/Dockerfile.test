@@ -1,51 +1,51 @@
-# Dockerfile.test - 简化版用于e2e测试
-# 单架构构建，与主Dockerfile保持一致
+# Dockerfile.test - Optimized for testing
+# Based on the main Dockerfile for consistency
 
-# Build stage
-FROM python:3.11.13-slim-bookworm
-ARG DEBIAN_MIRROR="deb https://mirrors.tuna.tsinghua.edu.cn/debian/ bookworm main contrib non-free non-free-firmware"
-ENV NODEJS_VERSION=v20.11.0
-ENV TARGET_ARCH="amd64"
-WORKDIR /app
-COPY . /app
-COPY .env.example /app/.env
+FROM python:3.11-slim
 
-# 安装构建依赖
-RUN echo "${DEBIAN_MIRROR}" > /etc/apt/sources.list && \
-    apt update && apt install -y --no-install-recommends \
-    libseccomp-dev \
-    libsqlite3-0 \
-    zlib1g \
-    pkg-config \
-    curl \
-    wget \
-    xz-utils \
+# Install build and test dependencies
+RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
-    && apt clean \
+    pkg-config \
+    libseccomp-dev \
+    curl \
+    && apt-get clean \
     && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 
-# copy uv from uv image
-COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
+# Install Node.js
+RUN curl -fsSL https://deb.nodesource.com/setup_20.x | bash - && \
+    apt-get install -y nodejs
 
-# install uv dependencies
-RUN uv venv /opt/venv --python 3.11 \
-    && . /opt/venv/bin/activate \
-    && uv sync --active
+WORKDIR /app
 
-# build the shared lib
-RUN ./scripts/build.sh
-RUN python3 ./scripts/env.py
+# Copy dependency files first for better caching
+COPY pyproject.toml uv.lock ./
+COPY scripts/ ./scripts/
 
-RUN /app/scripts/install_nodejs.sh amd64
+# Install Python dependencies including test dependencies
+RUN pip install -e . && \
+    pip install pytest pytest-cov
 
-ENV PATH="/opt/venv/bin:/opt/node/bin:$PATH"
+# Copy source code and tests
+COPY src/ ./src/
+COPY tests/ ./tests/
 
-# RUN cd /app/src/runtime/transformer/nodejs && npm install
-RUN . /opt/venv/bin/activate && pip install --no-deps -e . && \
-    pip install -i https://pypi.mirrors.ustc.edu.cn/simple matplotlib numpy && \
-    rm -rf /tmp/*
+# Build seccomp components (same as main Dockerfile)
+RUN chmod +x ./scripts/build.sh && ./scripts/build.sh
 
-# 暴露端口
+# Install Node.js transformer dependencies
+RUN cd src/runtime/nodejs && npm install
+
+# Create sandbox directories
+RUN mkdir -p /var/sandbox/python /var/sandbox/nodejs
+
+# Set environment variables
+ENV PYTHONPATH=/app
+ENV NODE_PATH=/app/src/runtime/nodejs
+ENV PYTHONUNBUFFERED=1
+
+# Expose port
 EXPOSE 8000
 
-ENTRYPOINT [ "/app/scripts/entrypoint.sh" ]
+# Default test command
+CMD ["python", "-m", "pytest", "tests/", "-v", "--cov=src", "--cov-report=term-missing"]

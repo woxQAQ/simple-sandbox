@@ -29,11 +29,6 @@ class LanguageRuntime(ABC):
         """返回支持的文件扩展名列表"""
         pass
 
-    @abstractmethod
-    def get_default_filename(self) -> str:
-        """返回默认文件名"""
-        pass
-
     def preprocess_code(self, code: str) -> str:
         """预处理代码（用于特殊处理，如matplotlib）"""
         return code

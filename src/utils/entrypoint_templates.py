@@ -15,7 +15,7 @@ class EntrypointTemplates:
     ) -> str:
         """创建Python执行入口点，直接嵌入加密代码"""
         encrypted_json = json.dumps(encrypted_code)
-        return f'''#!/usr/bin/env python3
+        template = f'''#!/usr/bin/env python3
 """
 代码执行入口点
 支持解密和执行加密的用户代码
@@ -72,13 +72,16 @@ def main():
         exec(user_code, exec_globals)
 
     except Exception as e:
-        print(f"Execution failed: {{e}}", file=sys.stderr)
+        import traceback
+        error_msg = f"Execution failed: {{e}}\\n{{traceback.format_exc()}}"
+        print(error_msg, file=sys.stderr)
         sys.exit(1)
 
 
 if __name__ == "__main__":
     main()
 '''
+        return template
 
     @staticmethod
     def create_nodejs_entrypoint(
@@ -89,7 +92,7 @@ if __name__ == "__main__":
 
         encrypted_json = json.dumps(encrypted_code)
 
-        return f"""#!/usr/bin/env node
+        template = f"""#!/usr/bin/env node
 /**
  * 代码执行入口点
  * 支持解密和执行加密的用户代码
@@ -150,6 +153,7 @@ if (require.main === module) {{
     main();
 }}
 """
+        return template
 
     @staticmethod
     def create_entrypoint(

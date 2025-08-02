@@ -15,8 +15,8 @@ def temporary_sandbox_dir() -> Generator[str, None, None]:
     """临时沙盒目录上下文管理器"""
     temp_dir = None
     try:
-        # 创建临时目录
-        temp_dir = tempfile.mkdtemp(prefix="sandbox_", suffix="", dir="/tmp")
+        # 创建临时目录 - 使用系统临时目录
+        temp_dir = tempfile.mkdtemp(prefix="sandbox_")
         os.chmod(temp_dir, 0o700)
         yield temp_dir
     finally:
@@ -25,7 +25,8 @@ def temporary_sandbox_dir() -> Generator[str, None, None]:
             try:
                 shutil.rmtree(temp_dir)
             except Exception:
-                # 忽略清理错误
+                # 忽略清理错误 - 临时目录清理失败不影响功能
+                # nosec B110 - cleanup failures are intentionally ignored
                 pass
 
 
@@ -49,7 +50,7 @@ class DirUtils:
     @staticmethod
     def create_temp_sandbox_dir() -> str:
         """创建临时沙盒目录"""
-        temp_dir = tempfile.mkdtemp(prefix="sandbox_", suffix="", dir="/tmp")
+        temp_dir = tempfile.mkdtemp(prefix="sandbox_")
         os.chmod(temp_dir, 0o700)
         return temp_dir
 
@@ -59,6 +60,8 @@ class DirUtils:
         try:
             shutil.rmtree(sandbox_dir)
         except Exception:
+            # 忽略清理错误 - 临时目录清理失败不影响功能
+            # nosec B110 - cleanup failures are intentionally ignored
             pass
 
     @staticmethod
