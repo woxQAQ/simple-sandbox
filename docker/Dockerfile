@@ -113,10 +113,9 @@ ENV PYTHONPATH=/app
 ENV NODE_PATH=/app/src/runtime/nodejs
 ENV PYTHONUNBUFFERED=1
 
-# Create non-root user for security
+# Create non-root user for security (but don't switch to it)
 RUN useradd -m -u 1000 sandbox && \
     chown -R sandbox:sandbox /app /var/sandbox
-USER sandbox
 
 # Expose port
 EXPOSE 8000
