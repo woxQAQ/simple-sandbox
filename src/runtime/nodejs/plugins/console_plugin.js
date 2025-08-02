@@ -72,4 +72,4 @@ class ConsolePlugin {
     }
 }
 
-module.exports = ConsolePlugin;
+export default ConsolePlugin;

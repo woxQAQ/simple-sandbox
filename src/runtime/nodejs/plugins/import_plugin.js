@@ -67,4 +67,4 @@ if (originalRequire) {
     }
 }
 
-module.exports = ImportPlugin;
+export default ImportPlugin;

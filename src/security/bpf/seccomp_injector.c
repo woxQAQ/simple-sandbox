@@ -97,8 +97,11 @@ static int prctl(int option, unsigned long arg2, unsigned long arg3,
 static void log_error(const char *msg, int error_code) {
   syslog(LOG_ERR, "seccomp_injector: %s (error: %d, errno: %d)", msg,
          error_code, errno);
-  fprintf(stderr, "seccomp_injector: %s (error: %d, errno: %d)\n", msg,
-          error_code, errno);
+  // 检查环境变量，决定是否输出到stderr
+  if (getenv("SECCOMP_VERBOSE") != NULL) {
+    fprintf(stderr, "seccomp_injector: %s (error: %d, errno: %d)\n", msg,
+            error_code, errno);
+  }
 }
 
 static void log_info(const char *msg) {

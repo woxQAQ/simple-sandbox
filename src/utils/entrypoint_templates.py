@@ -11,11 +11,11 @@ class EntrypointTemplates:
 
     @staticmethod
     def create_python_entrypoint(
-        encrypted_code: dict, key_b64: str, uid: str, gid: str
+        encrypted_code: dict, key_b64: str, uid: str, gid: str, seccomp_lib_path: str = "/var/sandbox/python/libseccomp_injector_python.so"
     ) -> str:
         """创建Python执行入口点，直接嵌入加密代码"""
         encrypted_json = json.dumps(encrypted_code)
-        template = f'''#!/usr/bin/env python3
+        template = '''#!/usr/bin/env python3
 """
 代码执行入口点
 支持解密和执行加密的用户代码
@@ -63,6 +63,23 @@ def main():
         # 解密代码
         user_code = decrypt_code(encrypted_data, key_b64)
 
+        # 设置seccomp安全限制
+        try:
+            import ctypes
+            import os
+            
+            # 加载seccomp注入器
+            lib_path = "{seccomp_lib_path}"
+            if os.path.exists(lib_path):
+                seccomp_lib = ctypes.CDLL(lib_path)
+                
+                # 设置seccomp过滤器
+                result = seccomp_lib.inject_seccomp_profile(int('{uid}'), int('{gid}'))
+                if result != 0:
+                    print(f"Warning: seccomp injection failed with code: {{result}}", file=sys.stderr)
+        except Exception as e:
+            print(f"Warning: Failed to setup seccomp security: {{e}}", file=sys.stderr)
+
         # 执行用户代码
         exec_globals = {{
             '__name__': '__main__',
@@ -80,12 +97,17 @@ def main():
 
 if __name__ == "__main__":
     main()
-'''
+'''.format(
+            encrypted_json=encrypted_json,
+            uid=uid,
+            gid=gid,
+            seccomp_lib_path=seccomp_lib_path
+        )
         return template
 
     @staticmethod
     def create_nodejs_entrypoint(
-        encrypted_code: dict, key_b64: str, uid: str, gid: str
+        encrypted_code: dict, key_b64: str, uid: str, gid: str, seccomp_lib_path: str = "/var/sandbox/nodejs/libseccomp_injector_nodejs.so"
     ) -> str:
         """创建Node.js执行入口点，直接嵌入加密代码"""
         import json
@@ -139,6 +161,9 @@ function main() {{
         // 解密代码
         const userCode = decryptCode(encryptedData, keyB64);
 
+        // 设置seccomp安全限制（暂未实现，需要外部FFI支持）
+        // TODO: 实现Node.js的seccomp安全设置
+
         // 执行用户代码
         eval(userCode);
 
@@ -157,16 +182,20 @@ if (require.main === module) {{
 
     @staticmethod
     def create_entrypoint(
-        language: str, encrypted_code: dict, key_b64: str, uid: str, gid: str
+        language: str, encrypted_code: dict, key_b64: str, uid: str, gid: str, seccomp_lib_path: str = None
     ) -> str:
         """创建指定语言的入口点"""
         if language.lower() == "python":
+            if seccomp_lib_path is None:
+                seccomp_lib_path = "/var/sandbox/python/libseccomp_injector_python.so"
             return EntrypointTemplates.create_python_entrypoint(
-                encrypted_code, key_b64, uid, gid
+                encrypted_code, key_b64, uid, gid, seccomp_lib_path
             )
         elif language.lower() == "nodejs":
+            if seccomp_lib_path is None:
+                seccomp_lib_path = "/var/sandbox/nodejs/libseccomp_injector_nodejs.so"
             return EntrypointTemplates.create_nodejs_entrypoint(
-                encrypted_code, key_b64, uid, gid
+                encrypted_code, key_b64, uid, gid, seccomp_lib_path
             )
         else:
             raise ValueError(f"Unsupported language: {language}")

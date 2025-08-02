@@ -100,6 +100,16 @@ build-image: setup-builder version
 		--platform $(BUILDX_PLATFORM) $(BUILDX_ARGS) \
 	-f ./docker/Dockerfile .
 
+# 使用镜像源构建Docker镜像
+build-image-with-mirror: setup-builder version
+	@echo "🏗️ Building Docker image with mirror acceleration..."
+	docker buildx build -t $(REGISTRY)/$(IMAGE):$(VERSION) \
+		--platform $(BUILDX_PLATFORM) $(BUILDX_ARGS) \
+		--build-arg APT_MIRROR=mirrors.tuna.tsinghua.edu.cn \
+		--build-arg PIP_MIRROR=https://mirrors.tuna.tsinghua.edu.cn/pypi/web/simple \
+		--build-arg NPM_MIRROR=https://registry.npmmirror.com \
+		-f ./docker/Dockerfile .
+
 # 构建并推送Docker镜像
 build-image-and-push: setup-builder version
 	@echo "🚀 Building and pushing Docker image..."
@@ -153,6 +163,7 @@ help:
 	@echo "  test-in-container             - Run tests in container"
 	@echo "  run-container                 - Start interactive container"
 	@echo "  build-image                   - Build Docker image"
+	@echo "  build-image-with-mirror       - Build Docker image with mirror acceleration"
 	@echo "  build-image-and-push          - Build and push Docker image"
 	@echo "  build-multiarch               - Build multi-platform Docker image"
 	@echo ""

@@ -4,9 +4,9 @@
  */
 
 import { parse } from 'acorn';
-import ConsolePlugin from 'plugins/console_plugin.js';
-import ImportPlugin from 'plugins/import_plugin.js';
-import ProcessPlugin from 'plugins/process_plugin.js';
+import ConsolePlugin from './plugins/console_plugin.js';
+import ImportPlugin from './plugins/import_plugin.js';
+import ProcessPlugin from './plugins/process_plugin.js';
 /**
  * 获取所有可用的插件
  * @returns {Array} - 插件列表

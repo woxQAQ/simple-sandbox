@@ -56,4 +56,4 @@ process.exit = function(code = 0) {
     }
 }
 
-module.exports = ProcessPlugin;
+export default ProcessPlugin;

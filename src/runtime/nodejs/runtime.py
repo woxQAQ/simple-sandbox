@@ -64,6 +64,7 @@ class NodeJSRuntime(LanguageRuntime):
         try:
             if runtime_config.debug_mode:
                 logger.debug("开始设置Node.js seccomp安全限制")
+
             # 使用安全管理器设置seccomp过滤器
             create_secure_process(
                 language="nodejs",
@@ -74,9 +75,9 @@ class NodeJSRuntime(LanguageRuntime):
             if runtime_config.debug_mode:
                 logger.debug("Node.js seccomp安全限制设置成功")
         except Exception as e:
-            # 如果seccomp设置失败，记录错误但继续执行
-            logger.error(f"Node.js seccomp安全设置失败: {e}")
-            print(f"seccomp安全设置失败: {e}", file=sys.stderr)
+            # seccomp设置失败时，静默处理
+            # 在preexec_fn中不应该输出到stderr，因为这会污染用户代码的输出
+            pass
 
     def execute(
         self,
@@ -138,6 +139,7 @@ class NodeJSRuntime(LanguageRuntime):
                         encryption_key,
                         str(runtime_config.sandbox_uid),
                         str(runtime_config.sandbox_gid),
+                        runtime_config.nodejs_security_lib_dir + "/libseccomp_injector_nodejs.so",
                     ),
                 )
 

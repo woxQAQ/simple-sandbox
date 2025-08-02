@@ -4,6 +4,13 @@
 # Build stage - compile seccomp components and install dependencies
 FROM --platform=$BUILDPLATFORM python:3.11-slim AS builder
 
+# Configure APT mirror if provided
+ARG APT_MIRROR=""
+RUN if [ -n "$APT_MIRROR" ]; then \
+        echo "Using APT mirror: $APT_MIRROR"; \
+        sed -i "s|deb.debian.org|$APT_MIRROR|g" /etc/apt/sources.list; \
+    fi
+
 # Install build dependencies
 RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
@@ -12,6 +19,13 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     curl \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
+
+# Configure Node.js mirror if provided
+ARG NPM_MIRROR=""
+RUN if [ -n "$NPM_MIRROR" ]; then \
+        echo "Using NPM mirror: $NPM_MIRROR"; \
+        npm config set registry "$NPM_MIRROR"; \
+    fi
 
 # Install Node.js
 RUN curl -fsSL https://deb.nodesource.com/setup_20.x | bash - && \
@@ -23,6 +37,13 @@ WORKDIR /app
 COPY pyproject.toml uv.lock ./
 COPY scripts/ ./scripts/
 
+# Configure pip mirror if provided
+ARG PIP_MIRROR=""
+RUN if [ -n "$PIP_MIRROR" ]; then \
+        echo "Using pip mirror: $PIP_MIRROR"; \
+        pip config set global.index-url "$PIP_MIRROR"; \
+    fi
+
 # Install Python dependencies
 RUN pip install -e .
 
@@ -32,11 +53,25 @@ COPY src/ ./src/
 # Build seccomp components
 RUN chmod +x ./scripts/build.sh && ./scripts/build.sh
 
+# Configure NPM mirror for Node.js transformer dependencies
+ARG NPM_MIRROR=""
+RUN if [ -n "$NPM_MIRROR" ]; then \
+        echo "Using NPM mirror: $NPM_MIRROR"; \
+        npm config set registry "$NPM_MIRROR"; \
+    fi
+
 # Install Node.js transformer dependencies
 RUN cd src/runtime/nodejs && npm install
 
 # Final stage - runtime image
 FROM --platform=$TARGETPLATFORM python:3.11-slim
+
+# Configure APT mirror if provided
+ARG APT_MIRROR=""
+RUN if [ -n "$APT_MIRROR" ]; then \
+        echo "Using APT mirror: $APT_MIRROR"; \
+        sed -i "s|deb.debian.org|$APT_MIRROR|g" /etc/apt/sources.list; \
+    fi
 
 # Install runtime dependencies only
 RUN apt-get update && apt-get install -y --no-install-recommends \
@@ -44,6 +79,13 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     curl \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
+
+# Configure Node.js mirror if provided
+ARG NPM_MIRROR=""
+RUN if [ -n "$NPM_MIRROR" ]; then \
+        echo "Using NPM mirror: $NPM_MIRROR"; \
+        npm config set registry "$NPM_MIRROR"; \
+    fi
 
 # Install Node.js for runtime
 RUN curl -fsSL https://deb.nodesource.com/setup_20.x | bash - && \
@@ -59,8 +101,10 @@ COPY pyproject.toml ./
 COPY --from=builder /usr/local/lib/python3.11/site-packages /usr/local/lib/python3.11/site-packages
 COPY --from=builder /app/src/runtime/nodejs/node_modules ./src/runtime/nodejs/node_modules
 
-# Create sandbox directories
-RUN mkdir -p /var/sandbox/python /var/sandbox/nodejs
+# Create sandbox directories and copy seccomp libraries
+RUN mkdir -p /var/sandbox/python /var/sandbox/nodejs && \
+    cp /app/build/lib/libseccomp_injector_python.so /var/sandbox/python/ && \
+    cp /app/build/lib/libseccomp_injector_nodejs.so /var/sandbox/nodejs/
 
 # Set environment variables
 ENV PYTHONPATH=/app

@@ -26,9 +26,10 @@ COPY scripts/ ./scripts/
 RUN pip install -e . && \
     pip install pytest pytest-cov
 
-# Copy source code and tests
+# Copy source code, tests, and main application
 COPY src/ ./src/
 COPY tests/ ./tests/
+COPY main.py ./
 
 # Build seccomp components (same as main Dockerfile)
 RUN chmod +x ./scripts/build.sh && ./scripts/build.sh
@@ -36,13 +37,16 @@ RUN chmod +x ./scripts/build.sh && ./scripts/build.sh
 # Install Node.js transformer dependencies
 RUN cd src/runtime/nodejs && npm install
 
-# Create sandbox directories
-RUN mkdir -p /var/sandbox/python /var/sandbox/nodejs
+# Create sandbox directories and copy seccomp libraries
+RUN mkdir -p /var/sandbox/python /var/sandbox/nodejs && \
+    cp /app/build/lib/libseccomp_injector_python.so /var/sandbox/python/ && \
+    cp /app/build/lib/libseccomp_injector_nodejs.so /var/sandbox/nodejs/
 
 # Set environment variables
 ENV PYTHONPATH=/app
 ENV NODE_PATH=/app/src/runtime/nodejs
 ENV PYTHONUNBUFFERED=1
+ENV TEST_MODE=false
 
 # Expose port
 EXPOSE 8000

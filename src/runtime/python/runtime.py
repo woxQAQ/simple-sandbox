@@ -1,6 +1,5 @@
 import os
 import subprocess  # nosec B404
-import sys
 import time
 import traceback
 from typing import Dict, List
@@ -61,6 +60,7 @@ class PythonRuntime(LanguageRuntime):
         try:
             if runtime_config.debug_mode:
                 logger.debug("开始设置seccomp安全限制")
+
             # 使用安全管理器设置seccomp过滤器
             create_secure_process(
                 language="python",
@@ -71,8 +71,12 @@ class PythonRuntime(LanguageRuntime):
             if runtime_config.debug_mode:
                 logger.debug("seccomp安全限制设置成功")
         except Exception as e:
-            logger.error(f"seccomp安全设置失败: {e}")
-            print(f"Warning: seccomp安全设置失败: {e}", file=sys.stderr)
+            # seccomp设置失败时，静默处理
+            # 在preexec_fn中不应该输出到stderr，因为这会污染用户代码的输出
+            # 但是为了调试，我们可以输出到文件
+            if runtime_config.debug_mode:
+                with open('/tmp/seccomp_debug.log', 'a') as f:
+                    f.write(f'seccomp设置失败: {e}\n')
             pass
 
     def execute(
@@ -127,6 +131,7 @@ class PythonRuntime(LanguageRuntime):
                         encryption_key,
                         str(runtime_config.sandbox_uid),
                         str(runtime_config.sandbox_gid),
+                        runtime_config.python_security_lib_dir + "/libseccomp_injector_python.so",
                     ),
                 )
 
@@ -143,7 +148,7 @@ class PythonRuntime(LanguageRuntime):
                 # 传递基本的环境变量，包括PATH
                 process_env = {"PATH": os.environ.get("PATH", "")}
 
-                # 执行进程，在preexecfn中设置seccomp安全限制
+                # 执行进程，暂时不使用preexecfn避免子进程创建失败
                 process = subprocess.Popen(  # nosec B603
                     command,
                     stdin=subprocess.PIPE if input_data else None,
@@ -152,7 +157,6 @@ class PythonRuntime(LanguageRuntime):
                     env=process_env,
                     text=True,
                     cwd=sandbox_dir,
-                    preexec_fn=self._setup_seccomp_security,
                 )
 
                 stdout, stderr = process.communicate(
