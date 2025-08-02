@@ -7,8 +7,8 @@ FROM --platform=$BUILDPLATFORM python:3.11-slim AS builder
 # Configure APT mirror if provided
 ARG APT_MIRROR=""
 RUN if [ -n "$APT_MIRROR" ]; then \
-        echo "Using APT mirror: $APT_MIRROR"; \
-        sed -i "s|deb.debian.org|$APT_MIRROR|g" /etc/apt/sources.list; \
+    echo "Using APT mirror: $APT_MIRROR"; \
+    sed -i "s|deb.debian.org|$APT_MIRROR|g" /etc/apt/sources.list; \
     fi
 
 # Install build dependencies
@@ -23,8 +23,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 # Configure Node.js mirror if provided
 ARG NPM_MIRROR=""
 RUN if [ -n "$NPM_MIRROR" ]; then \
-        echo "Using NPM mirror: $NPM_MIRROR"; \
-        npm config set registry "$NPM_MIRROR"; \
+    echo "Using NPM mirror: $NPM_MIRROR"; \
+    npm config set registry "$NPM_MIRROR"; \
     fi
 
 # Install Node.js
@@ -40,8 +40,8 @@ COPY scripts/ ./scripts/
 # Configure pip mirror if provided
 ARG PIP_MIRROR=""
 RUN if [ -n "$PIP_MIRROR" ]; then \
-        echo "Using pip mirror: $PIP_MIRROR"; \
-        pip config set global.index-url "$PIP_MIRROR"; \
+    echo "Using pip mirror: $PIP_MIRROR"; \
+    pip config set global.index-url "$PIP_MIRROR"; \
     fi
 
 # Install Python dependencies
@@ -49,6 +49,7 @@ RUN pip install -e .
 
 # Copy source code
 COPY src/ ./src/
+COPY main.py ./main.py
 
 # Build seccomp components
 RUN chmod +x ./scripts/build.sh && ./scripts/build.sh
@@ -56,8 +57,8 @@ RUN chmod +x ./scripts/build.sh && ./scripts/build.sh
 # Configure NPM mirror for Node.js transformer dependencies
 ARG NPM_MIRROR=""
 RUN if [ -n "$NPM_MIRROR" ]; then \
-        echo "Using NPM mirror: $NPM_MIRROR"; \
-        npm config set registry "$NPM_MIRROR"; \
+    echo "Using NPM mirror: $NPM_MIRROR"; \
+    npm config set registry "$NPM_MIRROR"; \
     fi
 
 # Install Node.js transformer dependencies
@@ -69,8 +70,8 @@ FROM --platform=$TARGETPLATFORM python:3.11-slim
 # Configure APT mirror if provided
 ARG APT_MIRROR=""
 RUN if [ -n "$APT_MIRROR" ]; then \
-        echo "Using APT mirror: $APT_MIRROR"; \
-        sed -i "s|deb.debian.org|$APT_MIRROR|g" /etc/apt/sources.list; \
+    echo "Using APT mirror: $APT_MIRROR"; \
+    sed -i "s|deb.debian.org|$APT_MIRROR|g" /etc/apt/sources.list; \
     fi
 
 # Install runtime dependencies only
@@ -83,8 +84,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 # Configure Node.js mirror if provided
 ARG NPM_MIRROR=""
 RUN if [ -n "$NPM_MIRROR" ]; then \
-        echo "Using NPM mirror: $NPM_MIRROR"; \
-        npm config set registry "$NPM_MIRROR"; \
+    echo "Using NPM mirror: $NPM_MIRROR"; \
+    npm config set registry "$NPM_MIRROR"; \
     fi
 
 # Install Node.js for runtime
