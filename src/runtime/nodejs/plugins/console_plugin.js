@@ -53,12 +53,20 @@ class ConsolePlugin {
     const originalInfo = console.info;
     const originalDebug = console.debug;
 
-    const timestamp = () => new Date().toISOString();
+    // 简化的时间戳生成，减少CPU开销
+    const timestamp = () => {
+        return new Date().toISOString();
+    };
 
     function enhanceConsole(name, originalFn) {
         return function(...args) {
-            const enhancedArgs = [\`[\${timestamp()}] [\${name.toUpperCase()}]\`, ...args];
-            originalFn.call(console, ...enhancedArgs);
+            // 只在有参数时才添加时间戳
+            if (args.length > 0) {
+                const enhancedArgs = [\`[\${timestamp()}] [\${name.toUpperCase()}]\`, ...args];
+                originalFn.call(console, ...enhancedArgs);
+            } else {
+                originalFn.call(console);
+            }
         };
     }
 

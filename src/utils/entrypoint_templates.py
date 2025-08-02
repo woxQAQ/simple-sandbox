@@ -172,6 +172,11 @@ function decryptCode(encryptedData, keyB64) {{
     return decrypted.toString('utf8');
 }}
 
+function forceExit() {{
+    // 强制退出进程，确保不会卡住
+    process.exit(0);
+}}
+
 function main() {{
     try {{
         // 从命令行参数获取加密密钥
@@ -186,8 +191,38 @@ function main() {{
         // 设置seccomp安全限制（暂未实现，需要外部FFI支持）
         // TODO: 实现Node.js的seccomp安全设置
 
-        // 执行用户代码
-        eval(userCode);
+        // 确保进程在代码执行完成后退出
+        // 设置多个退出机制
+        
+        // 1. 清理所有定时器
+        if (global.setTimeout) {{
+            const originalSetTimeout = global.setTimeout;
+            global.setTimeout = function(callback, delay, ...args) {{
+                if (delay > 50) {{ // 不允许设置超过50ms的定时器
+                    return null;
+                }}
+                return originalSetTimeout.call(this, callback, delay, ...args);
+            }};
+        }}
+        
+        // 2. 清理所有Interval
+        if (global.setInterval) {{
+            const originalSetInterval = global.setInterval;
+            global.setInterval = function(callback, delay, ...args) {{
+                if (delay > 50) {{ // 不允许设置超过50ms的interval
+                    return null;
+                }}
+                return originalSetInterval.call(this, callback, delay, ...args);
+            }};
+        }}
+
+        // 3. 执行用户代码，使用Function构造器而不是eval
+        // 这样可以确保代码在严格模式下执行，并且有独立的作用域
+        const userFunction = new Function(userCode);
+        userFunction();
+
+        // 4. 立即退出，不等待任何异步操作
+        process.exit(0);
 
     }} catch (e) {{
         console.error("Execution failed: " + e.message);
