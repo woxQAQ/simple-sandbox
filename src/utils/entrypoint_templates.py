@@ -101,7 +101,7 @@ def main():
                 seccomp_error = f"seccomp library not found at: {{lib_path}}"
         except Exception as e:
             seccomp_error = f"seccomp injection failed: {{e}}"
-        
+
         # 如果seccomp设置失败，输出错误信息并退出
         if seccomp_error:
             print(f"Security Error: {{seccomp_error}}", file=sys.stderr)
