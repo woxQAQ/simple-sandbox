@@ -49,7 +49,7 @@ RUN pip install -e .
 
 # Copy source code
 COPY src/ ./src/
-COPY main.py ./main.py
+COPY main.py ./
 
 # Build seccomp components
 RUN chmod +x ./scripts/build.sh && ./scripts/build.sh
@@ -98,6 +98,7 @@ WORKDIR /app
 COPY --from=builder /app/src ./src
 COPY --from=builder /app/build ./build
 COPY --from=builder /app/scripts ./scripts
+COPY --from=builder /app/main.py ./main.py
 COPY pyproject.toml ./
 COPY --from=builder /usr/local/lib/python3.11/site-packages /usr/local/lib/python3.11/site-packages
 COPY --from=builder /app/src/runtime/nodejs/node_modules ./src/runtime/nodejs/node_modules
