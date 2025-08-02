@@ -53,30 +53,36 @@ class TestSandboxEnvironment:
         if not nodejs_lib_dir.exists():
             nodejs_lib_dir.mkdir(parents=True, exist_ok=True)
             self.temp_dirs.append(nodejs_lib_dir)
-        
+
         # 复制安全库文件到测试目录
         self._copy_security_libraries(python_lib_dir, nodejs_lib_dir)
-    
-    def _copy_security_libraries(self, python_lib_dir: Path, nodejs_lib_dir: Path) -> None:
+
+    def _copy_security_libraries(
+        self, python_lib_dir: Path, nodejs_lib_dir: Path
+    ) -> None:
         """复制安全库文件到测试目录"""
         # 查找项目中的安全库文件
         project_root = Path(__file__).parent.parent.parent
         build_lib_dir = project_root / "build" / "lib"
-        
+
         if build_lib_dir.exists():
             import shutil
-            
+
             # 复制Python安全库
             python_lib_file = build_lib_dir / "libseccomp_injector_python.so"
             if python_lib_file.exists():
-                target_python_lib = python_lib_dir / "libseccomp_injector_python.so"
+                target_python_lib = (
+                    python_lib_dir / "libseccomp_injector_python.so"
+                )
                 if python_lib_file != target_python_lib:
                     shutil.copy2(python_lib_file, target_python_lib)
-            
+
             # 复制Node.js安全库
             nodejs_lib_file = build_lib_dir / "libseccomp_injector_nodejs.so"
             if nodejs_lib_file.exists():
-                target_nodejs_lib = nodejs_lib_dir / "libseccomp_injector_nodejs.so"
+                target_nodejs_lib = (
+                    nodejs_lib_dir / "libseccomp_injector_nodejs.so"
+                )
                 if nodejs_lib_file != target_nodejs_lib:
                     shutil.copy2(nodejs_lib_file, target_nodejs_lib)
 

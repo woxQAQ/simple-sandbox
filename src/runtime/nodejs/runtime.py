@@ -1,6 +1,5 @@
 import os
 import subprocess  # nosec B404
-import sys
 import time
 import traceback
 from typing import Dict, List
@@ -74,7 +73,7 @@ class NodeJSRuntime(LanguageRuntime):
             )
             if runtime_config.debug_mode:
                 logger.debug("Node.js seccomp安全限制设置成功")
-        except Exception as e:
+        except Exception:
             # seccomp设置失败时，静默处理
             # 在preexec_fn中不应该输出到stderr，因为这会污染用户代码的输出
             pass
@@ -139,7 +138,8 @@ class NodeJSRuntime(LanguageRuntime):
                         encryption_key,
                         str(runtime_config.sandbox_uid),
                         str(runtime_config.sandbox_gid),
-                        runtime_config.nodejs_security_lib_dir + "/libseccomp_injector_nodejs.so",
+                        runtime_config.nodejs_security_lib_dir
+                        + "/libseccomp_injector_nodejs.so",
                     ),
                 )
 

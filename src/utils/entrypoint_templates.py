@@ -11,7 +11,11 @@ class EntrypointTemplates:
 
     @staticmethod
     def create_python_entrypoint(
-        encrypted_code: dict, key_b64: str, uid: str, gid: str, seccomp_lib_path: str = "/var/sandbox/python/libseccomp_injector_python.so"
+        encrypted_code: dict,
+        key_b64: str,
+        uid: str,
+        gid: str,
+        seccomp_lib_path: str = "/var/sandbox/python/libseccomp_injector_python.so",
     ) -> str:
         """创建Python执行入口点，直接嵌入加密代码"""
         encrypted_json = json.dumps(encrypted_code)
@@ -101,13 +105,17 @@ if __name__ == "__main__":
             encrypted_json=encrypted_json,
             uid=uid,
             gid=gid,
-            seccomp_lib_path=seccomp_lib_path
+            seccomp_lib_path=seccomp_lib_path,
         )
         return template
 
     @staticmethod
     def create_nodejs_entrypoint(
-        encrypted_code: dict, key_b64: str, uid: str, gid: str, seccomp_lib_path: str = "/var/sandbox/nodejs/libseccomp_injector_nodejs.so"
+        encrypted_code: dict,
+        key_b64: str,
+        uid: str,
+        gid: str,
+        seccomp_lib_path: str = "/var/sandbox/nodejs/libseccomp_injector_nodejs.so",
     ) -> str:
         """创建Node.js执行入口点，直接嵌入加密代码"""
         import json
@@ -182,18 +190,27 @@ if (require.main === module) {{
 
     @staticmethod
     def create_entrypoint(
-        language: str, encrypted_code: dict, key_b64: str, uid: str, gid: str, seccomp_lib_path: str = None
+        language: str,
+        encrypted_code: dict,
+        key_b64: str,
+        uid: str,
+        gid: str,
+        seccomp_lib_path: str = None,
     ) -> str:
         """创建指定语言的入口点"""
         if language.lower() == "python":
             if seccomp_lib_path is None:
-                seccomp_lib_path = "/var/sandbox/python/libseccomp_injector_python.so"
+                seccomp_lib_path = (
+                    "/var/sandbox/python/libseccomp_injector_python.so"
+                )
             return EntrypointTemplates.create_python_entrypoint(
                 encrypted_code, key_b64, uid, gid, seccomp_lib_path
             )
         elif language.lower() == "nodejs":
             if seccomp_lib_path is None:
-                seccomp_lib_path = "/var/sandbox/nodejs/libseccomp_injector_nodejs.so"
+                seccomp_lib_path = (
+                    "/var/sandbox/nodejs/libseccomp_injector_nodejs.so"
+                )
             return EntrypointTemplates.create_nodejs_entrypoint(
                 encrypted_code, key_b64, uid, gid, seccomp_lib_path
             )

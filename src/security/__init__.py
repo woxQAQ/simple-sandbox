@@ -114,7 +114,9 @@ class SecurityManager:
             injector.inject_seccomp_profile(uid, gid)
         except SeccompInjectionError as e:
             # 如果seccomp注入失败，检查是否是权限问题
-            if "Privilege operation failed" in str(e) or "Failed to set GID" in str(e):
+            if "Privilege operation failed" in str(
+                e
+            ) or "Failed to set GID" in str(e):
                 # 在非特权环境中，记录警告但继续执行
                 # 这确保了代码在没有特权的环境中仍能运行
                 # 不再打印到stderr，避免污染用户代码的输出

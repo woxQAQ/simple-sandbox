@@ -75,8 +75,8 @@ class PythonRuntime(LanguageRuntime):
             # 在preexec_fn中不应该输出到stderr，因为这会污染用户代码的输出
             # 但是为了调试，我们可以输出到文件
             if runtime_config.debug_mode:
-                with open('/tmp/seccomp_debug.log', 'a') as f:
-                    f.write(f'seccomp设置失败: {e}\n')
+                with open("/tmp/seccomp_debug.log", "a") as f:
+                    f.write(f"seccomp设置失败: {e}\n")
             pass
 
     def execute(
@@ -131,7 +131,8 @@ class PythonRuntime(LanguageRuntime):
                         encryption_key,
                         str(runtime_config.sandbox_uid),
                         str(runtime_config.sandbox_gid),
-                        runtime_config.python_security_lib_dir + "/libseccomp_injector_python.so",
+                        runtime_config.python_security_lib_dir
+                        + "/libseccomp_injector_python.so",
                     ),
                 )
 
