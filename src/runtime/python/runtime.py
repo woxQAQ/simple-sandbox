@@ -62,9 +62,8 @@ class PythonRuntime(LanguageRuntime):
                 logger.debug("开始设置seccomp安全限制")
 
             # 使用安全管理器设置seccomp过滤器
-            # 使用实际的库路径
-            import os
-            actual_lib_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))), "build", "lib")
+            # 使用Docker容器中的标准库路径
+            actual_lib_dir = "/var/sandbox"
             
             create_secure_process(
                 language="python",
@@ -124,9 +123,8 @@ class PythonRuntime(LanguageRuntime):
                 )
 
                 # 创建entrypoint文件（直接嵌入加密代码）
-                # 使用实际的库路径而不是配置目录
-                import os
-                seccomp_lib_path = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))), "build", "lib", "libseccomp_injector_python.so")
+                # 使用Docker容器中的标准库路径
+                seccomp_lib_path = "/var/sandbox/python/libseccomp_injector_python.so"
                 
                 entrypoint_path = create_file_in_dir(
                     sandbox_dir,
