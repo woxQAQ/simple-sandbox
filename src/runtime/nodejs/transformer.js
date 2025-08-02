@@ -3,7 +3,7 @@
  * 分离AST解析和插件扩展逻辑
  */
 
-import { parse } from './node_modules/acorn/dist/acorn.mjs';
+import { parse } from 'acorn';
 import ConsolePlugin from './plugins/console_plugin.js';
 import ImportPlugin from './plugins/import_plugin.js';
 import ProcessPlugin from './plugins/process_plugin.js';

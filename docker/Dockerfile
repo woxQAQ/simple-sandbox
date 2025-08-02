@@ -62,7 +62,13 @@ RUN if [ -n "$NPM_MIRROR" ]; then \
     fi
 
 # Install Node.js transformer dependencies
-RUN cd src/runtime/nodejs && npm install
+RUN cd src/runtime/nodejs && npm install && \
+    # Ensure acorn is properly built
+    cd node_modules/acorn && \
+    if [ ! -d "dist" ]; then \
+        npm install && \
+        npm run prepare; \
+    fi
 
 # Final stage - runtime image
 FROM --platform=$TARGETPLATFORM python:3.11-slim

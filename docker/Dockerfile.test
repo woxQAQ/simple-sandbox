@@ -35,7 +35,13 @@ COPY main.py ./
 RUN chmod +x ./scripts/build.sh && ./scripts/build.sh
 
 # Install Node.js transformer dependencies
-RUN cd src/runtime/nodejs && npm install
+RUN cd src/runtime/nodejs && npm install && \
+    # Ensure acorn is properly built
+    cd node_modules/acorn && \
+    if [ ! -d "dist" ]; then \
+        npm install && \
+        npm run prepare; \
+    fi
 
 # Create sandbox directories and copy seccomp libraries
 RUN mkdir -p /var/sandbox/python /var/sandbox/nodejs && \
