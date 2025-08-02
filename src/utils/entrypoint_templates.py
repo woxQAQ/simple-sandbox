@@ -68,6 +68,7 @@ def main():
         user_code = decrypt_code(encrypted_data, key_b64)
 
         # 设置seccomp安全限制
+        seccomp_error = None
         try:
             import ctypes
             import os
@@ -86,10 +87,26 @@ def main():
                         pass
                     else:
                         # 其他seccomp错误直接抛出异常并结束进程
-                        raise RuntimeError(f"seccomp injection failed with code: {{result}}")
+                        error_msgs = {{
+                            -1: "prctl() system call failed",
+                            -2: "seccomp system call failed",
+                            -3: "Invalid arguments",
+                            -4: "Privilege operation failed (expected in container)",
+                            -5: "Memory allocation failed",
+                            -6: "Unsupported platform"
+                        }}
+                        error_msg = error_msgs.get(result, f"Unknown error (code: {{result}})")
+                        seccomp_error = f"seccomp injection failed: {{error_msg}}"
+            else:
+                seccomp_error = f"seccomp library not found at: {{lib_path}}"
         except Exception as e:
-            # seccomp设置失败直接抛出异常并结束进程
-            raise RuntimeError(f"seccomp injection failed: {{e}}")
+            seccomp_error = f"seccomp injection failed: {{e}}"
+        
+        # 如果seccomp设置失败，输出错误信息并退出
+        if seccomp_error:
+            print(f"Security Error: {{seccomp_error}}", file=sys.stderr)
+            print("Code execution aborted for security reasons.", file=sys.stderr)
+            sys.exit(1)
 
         # 执行用户代码
         exec_globals = {{
@@ -193,7 +210,7 @@ function main() {{
 
         // 确保进程在代码执行完成后退出
         // 设置多个退出机制
-        
+
         // 1. 清理所有定时器
         if (global.setTimeout) {{
             const originalSetTimeout = global.setTimeout;
@@ -204,7 +221,7 @@ function main() {{
                 return originalSetTimeout.call(this, callback, delay, ...args);
             }};
         }}
-        
+
         // 2. 清理所有Interval
         if (global.setInterval) {{
             const originalSetInterval = global.setInterval;

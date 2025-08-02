@@ -62,22 +62,24 @@ class PythonRuntime(LanguageRuntime):
                 logger.debug("开始设置seccomp安全限制")
 
             # 使用安全管理器设置seccomp过滤器
+            # 使用实际的库路径
+            import os
+            actual_lib_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))), "build", "lib")
+            
             create_secure_process(
                 language="python",
                 uid=runtime_config.sandbox_uid,
                 gid=runtime_config.sandbox_gid,
-                library_dir=runtime_config.python_security_lib_dir,
+                library_dir=actual_lib_dir,
             )
             if runtime_config.debug_mode:
                 logger.debug("seccomp安全限制设置成功")
         except Exception as e:
-            # seccomp设置失败时，静默处理
-            # 在preexec_fn中不应该输出到stderr，因为这会污染用户代码的输出
-            # 但是为了调试，我们可以输出到文件
-            if runtime_config.debug_mode:
-                with open("/tmp/seccomp_debug.log", "a") as f:
-                    f.write(f"seccomp设置失败: {e}\n")
-            pass
+            # seccomp设置失败时，抛出异常来阻止进程执行
+            # 这是严重的安全问题，必须阻止代码执行
+            error_msg = f"seccomp安全限制设置失败: {e}"
+            logger.error(error_msg)
+            raise RuntimeError(error_msg)
 
     def execute(
         self,
@@ -122,6 +124,10 @@ class PythonRuntime(LanguageRuntime):
                 )
 
                 # 创建entrypoint文件（直接嵌入加密代码）
+                # 使用实际的库路径而不是配置目录
+                import os
+                seccomp_lib_path = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))), "build", "lib", "libseccomp_injector_python.so")
+                
                 entrypoint_path = create_file_in_dir(
                     sandbox_dir,
                     "entrypoint.py",
@@ -131,8 +137,7 @@ class PythonRuntime(LanguageRuntime):
                         encryption_key,
                         str(runtime_config.sandbox_uid),
                         str(runtime_config.sandbox_gid),
-                        runtime_config.python_security_lib_dir
-                        + "/libseccomp_injector_python.so",
+                        seccomp_lib_path,
                     ),
                 )
 
@@ -149,7 +154,8 @@ class PythonRuntime(LanguageRuntime):
                 # 传递基本的环境变量，包括PATH
                 process_env = {"PATH": os.environ.get("PATH", "")}
 
-                # 执行进程，暂时不使用preexecfn避免子进程创建失败
+                # 执行进程，在preexecfn中设置seccomp安全限制
+                # 先尝试不使用preexec_fn，让entrypoint中的seccomp处理
                 process = subprocess.Popen(  # nosec B603
                     command,
                     stdin=subprocess.PIPE if input_data else None,
@@ -167,11 +173,20 @@ class PythonRuntime(LanguageRuntime):
 
                 execution_time = time.time() - start_time
 
-                logger.info(
-                    f"Python代码执行完成 - 状态: {process.returncode} - "
-                    f"执行时间: {execution_time:.3f}s - "
-                    f"stdout长度: {len(stdout)} - stderr长度: {len(stderr)}"
-                )
+                # 记录详细的执行结果
+                if process.returncode == 0:
+                    logger.info(
+                        f"Python代码执行成功 - 状态: {process.returncode} - "
+                        f"执行时间: {execution_time:.3f}s - "
+                        f"stdout长度: {len(stdout)} - stderr长度: {len(stderr)}"
+                    )
+                else:
+                    logger.warning(
+                        f"Python代码执行失败 - 状态: {process.returncode} - "
+                        f"执行时间: {execution_time:.3f}s - "
+                        f"stdout长度: {len(stdout)} - stderr长度: {len(stderr)} - "
+                        f"stderr: {stderr[:200]}{'...' if len(stderr) > 200 else ''}"
+                    )
 
                 return ExecutionResult(
                     status=(

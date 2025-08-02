@@ -197,11 +197,8 @@ class NodeJSRuntime(LanguageRuntime):
                     f"Node.js代码执行超时 - 耗时: {execution_time:.3f}s"
                 )
                 # 确保进程被终止
-                try:
-                    process.kill()
-                    process.wait()
-                except:
-                    pass
+                process.kill()
+                process.wait()
                 return ExecutionResult(
                     status=ExecutionStatus.TIMEOUT,
                     stdout="",
