@@ -97,7 +97,14 @@ def main():
             '__file__': __file__
         }}
 
-        exec(user_code, exec_globals)
+        try:
+            exec(user_code, exec_globals)
+        except PermissionError as e:
+            print(f"权限错误: {{e}}", file=sys.stderr)
+            sys.exit(1)
+        except OSError as e:
+            print(f"系统调用被阻止: {{e}}", file=sys.stderr)
+            sys.exit(1)
 
     except Exception as e:
         import traceback

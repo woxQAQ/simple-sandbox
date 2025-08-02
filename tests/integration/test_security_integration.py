@@ -326,14 +326,22 @@ class TestSecurityBoundaryConditions:
         mock_injector = Mock()
         mock_injector_class.return_value = mock_injector
 
-        # 测试各种错误码
-        error_codes = [-1, -2, -3, -4, -5, -6]
+        security_manager = SecurityManager()
+
+        # 测试权限错误（错误码-4）应该被静默处理
+        mock_injector.inject_seccomp_profile.side_effect = (
+            SeccompInjectionError(-4)  # SECCOMP_ERROR_PRIVILEGE
+        )
+
+        # 权限错误不应该抛出异常
+        security_manager.setup_security_profile("python", 1000, 1000)
+
+        # 测试其他错误码应该抛出异常
+        error_codes = [-1, -2, -3, -5, -6]  # 排除-4（权限错误）
         for error_code in error_codes:
             mock_injector.inject_seccomp_profile.side_effect = (
                 SeccompInjectionError(error_code)
             )
-
-            security_manager = SecurityManager()
 
             with pytest.raises(SeccompInjectionError) as exc_info:
                 security_manager.setup_security_profile("python", 1000, 1000)

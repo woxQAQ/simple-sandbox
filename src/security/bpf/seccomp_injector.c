@@ -197,9 +197,9 @@ static int generate_bpf_program(const int *syscalls, size_t syscall_count,
         (struct sock_filter)BPF_STMT(BPF_RET | BPF_K, SECCOMP_RET_ALLOW);
   }
 
-  /* 默认拒绝所有其他系统调用 */
+  /* 默认拒绝所有其他系统调用，使用 EACCES 表示权限被拒绝 */
   (*filter)[idx++] = (struct sock_filter)BPF_STMT(
-      BPF_RET | BPF_K, SECCOMP_RET_ERRNO | (EPERM & 0xFFFF));
+      BPF_RET | BPF_K, SECCOMP_RET_ERRNO | (EACCES & 0xFFFF));
 
   *filter_len = idx;
   return SECCOMP_SUCCESS;
