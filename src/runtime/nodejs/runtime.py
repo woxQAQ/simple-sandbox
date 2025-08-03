@@ -152,8 +152,6 @@ class NodeJSRuntime(LanguageRuntime):
                     stdout=stdout or "",
                     stderr=stderr or "",
                     execution_time=execution_time,
-                    exit_code=process.returncode,
-                    error_message=stderr if process.returncode != 0 else None,
                 )
 
                 # 记录执行结果日志
