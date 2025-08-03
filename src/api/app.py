@@ -2,6 +2,7 @@ import json
 import logging
 import threading
 import time
+import traceback
 from collections import defaultdict, deque
 from datetime import datetime, timedelta
 from enum import Enum
@@ -213,6 +214,7 @@ class SimpleHTTPRequestHandler(BaseHTTPRequestHandler):
             self._send_error("Invalid JSON", 400)
         except Exception as e:
             logger.error(f"执行错误 - {client_ip} - 错误: {e}")
+            logger.error(f"完整堆栈跟踪:\n{traceback.format_exc()}")
             self._send_error(f"Internal server error: {str(e)}", 500)
         finally:
             # 释放信号量
@@ -254,6 +256,7 @@ def run_server(host=None, port=None):
         server.server_close()
     except Exception as e:
         logger.error(f"服务器运行时错误: {e}")
+        logger.error(f"完整堆栈跟踪:\n{traceback.format_exc()}")
         raise
     finally:
         logger.info("服务器已关闭")
