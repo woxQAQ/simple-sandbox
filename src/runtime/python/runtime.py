@@ -9,7 +9,6 @@ from src.runtime.common.base import LanguageRuntime
 from src.runtime.common.runtime_utils import RuntimeUtils
 from src.runtime.logging_config import create_runtime_logger
 from src.runtime.python.extensions import PythonASTContext, python_ast_registry
-from src.utils import temporary_sandbox_dir
 
 logger = create_runtime_logger(__name__)
 
@@ -66,33 +65,35 @@ class PythonRuntime(LanguageRuntime):
                 # 确保目标目录存在
                 if not os.path.exists(sandbox_dir):
                     if runtime_config.debug_mode:
-                        logger.debug(f"目标目录不存在，跳过chroot: {sandbox_dir}")
+                        logger.debug(
+                            f"目标目录不存在，跳过chroot: {sandbox_dir}"
+                        )
                     # 回退到常规文件系统隔离
                     use_chroot = False
                 else:
                     use_chroot = True
             else:
                 use_chroot = False
-            
+
             if use_chroot:
                 # 设置chroot环境
                 if runtime_config.debug_mode:
                     logger.debug(f"设置chroot到: {sandbox_dir}")
-                
+
                 # 首先切换到沙盒目录
                 os.chdir(sandbox_dir)
-                
+
                 # 执行chroot
                 os.chroot(sandbox_dir)
-                
+
                 # chroot后，当前目录变为根目录，需要切换到tmp目录
                 os.chdir("/tmp")
-                
+
                 # 设置环境变量（chroot后的路径）
                 os.environ["PYTHONPATH"] = "/tmp"
                 os.environ["HOME"] = "/tmp"
                 os.environ["TMPDIR"] = "/tmp"
-                
+
                 if runtime_config.debug_mode:
                     logger.debug(f"chroot设置完成，当前目录: {os.getcwd()}")
             else:
@@ -169,7 +170,9 @@ class PythonRuntime(LanguageRuntime):
                     )
 
                     # 检查是否在chroot环境下
-                    if sandbox_dir == "/var/sandbox/python" and os.path.exists(sandbox_dir):
+                    if sandbox_dir == "/var/sandbox/python" and os.path.exists(
+                        sandbox_dir
+                    ):
                         # 在chroot环境下，库路径需要调整
                         # chroot后，外部库路径变为相对路径
                         library_path = "."  # chroot后的当前目录
@@ -238,7 +241,7 @@ class PythonRuntime(LanguageRuntime):
 
         # 使用固定的Python沙盒目录
         python_sandbox_dir = "/var/sandbox/python"
-        
+
         # 检查是否有权限访问/var/sandbox目录
         try:
             # 确保tmp目录存在
@@ -246,12 +249,13 @@ class PythonRuntime(LanguageRuntime):
         except PermissionError:
             # 在开发环境中，如果没有权限，使用临时目录
             import tempfile
+
             python_sandbox_dir = tempfile.mkdtemp(prefix="sandbox-python-")
             os.makedirs(os.path.join(python_sandbox_dir, "tmp"), exist_ok=True)
-            
+
             if runtime_config.debug_mode:
                 logger.debug(f"开发环境中使用临时目录: {python_sandbox_dir}")
-        
+
         if runtime_config.debug_mode:
             logger.debug(f"使用Python沙盒目录: {python_sandbox_dir}")
 
@@ -322,9 +326,7 @@ class PythonRuntime(LanguageRuntime):
             )
 
             # 记录执行结果日志
-            RuntimeUtils.log_execution_result(
-                "Python", result, execution_time
-            )
+            RuntimeUtils.log_execution_result("Python", result, execution_time)
 
             return result
 

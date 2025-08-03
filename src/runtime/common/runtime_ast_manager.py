@@ -6,7 +6,6 @@
 import logging
 from typing import Any, Dict
 
-from src.runtime.nodejs.extensions import nodejs_ast_manager
 from src.runtime.python.extensions import python_ast_registry
 from src.runtime.python.transformer import PythonASTContext
 
@@ -50,9 +49,9 @@ class RuntimeASTManager:
             return code
 
     def _transform_javascript(self, code: str, context: Dict[str, Any]) -> str:
-        """转换JavaScript/TypeScript代码 - 通过Node进程调用acorn"""
-
-        return nodejs_ast_manager.transform_code(code, context)
+        """转换JavaScript/TypeScript代码 - Node.js transformer已移除，直接返回原代码"""
+        # Node.js transformer已被移除，直接返回原始代码
+        return code
 
 
 # 全局管理器

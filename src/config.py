@@ -113,7 +113,6 @@ class RuntimeConfig:
         """获取Python transformer命令"""
         return [self.get_python_command(), str(self.python_transformer_path)]
 
-    
     def to_dict(self) -> Dict[str, Any]:
         """转换为字典"""
         return {

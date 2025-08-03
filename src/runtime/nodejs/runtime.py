@@ -8,9 +8,7 @@ from src.models import ExecutionResult, ExecutionStatus
 from src.runtime.common.base import LanguageRuntime
 from src.runtime.common.runtime_utils import RuntimeUtils
 from src.runtime.logging_config import create_runtime_logger
-from src.runtime.nodejs.extensions import nodejs_ast_manager
 from src.security import create_secure_process
-from src.utils import temporary_sandbox_dir
 
 logger = create_runtime_logger(__name__)
 
@@ -28,15 +26,13 @@ class NodeJSRuntime(LanguageRuntime):
         """预处理Node.js代码（已移除transformer功能）"""
         if runtime_config.debug_mode:
             logger.debug(f"开始预处理Node.js代码 - 代码长度: {len(code)}")
-        
+
         # 直接返回原始代码，不再使用AST转换
         processed_code = code
-        
+
         if runtime_config.debug_mode:
-            logger.debug(
-                f"Node.js代码预处理完成 - 长度: {len(processed_code)}"
-            )
-        
+            logger.debug(f"Node.js代码预处理完成 - 长度: {len(processed_code)}")
+
         return processed_code
 
     def get_command(self, filename: str = None) -> List[str]:
@@ -105,7 +101,9 @@ class NodeJSRuntime(LanguageRuntime):
                 )
 
                 # 获取seccomp库路径（在沙盒目录中）
-                seccomp_lib_path = os.path.join(sandbox_dir, "libseccomp_injector_nodejs.so")
+                seccomp_lib_path = os.path.join(
+                    sandbox_dir, "libseccomp_injector_nodejs.so"
+                )
 
                 # 创建entrypoint文件
                 entrypoint_path = RuntimeUtils.create_entrypoint_file(
