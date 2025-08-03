@@ -253,19 +253,6 @@ int apply_seccomp_filter(void) {
 /* 完整的seccomp注入流程 */
 int inject_seccomp_profile(uid_t uid, gid_t gid) {
   int ret;
-
-  /* 1. 设置PR_SET_NO_NEW_PRIVS */
-  ret = setup_no_new_privs();
-  if (ret != SECCOMP_SUCCESS) {
-    return ret;
-  }
-
-  /* 2. 应用seccomp过滤器 */
-  ret = apply_seccomp_filter();
-  if (ret != SECCOMP_SUCCESS) {
-    return ret;
-  }
-
   /* 执行chroot */
   if (chroot(".") != 0) {
     log_error("Failed to execute chroot", SECCOMP_ERROR_CHROOT);
@@ -277,6 +264,17 @@ int inject_seccomp_profile(uid_t uid, gid_t gid) {
     log_error("Failed to change directory to root in chroot",
               SECCOMP_ERROR_CHROOT);
     return SECCOMP_ERROR_CHROOT;
+  }
+  /* 1. 设置PR_SET_NO_NEW_PRIVS */
+  ret = setup_no_new_privs();
+  if (ret != SECCOMP_SUCCESS) {
+    return ret;
+  }
+
+  /* 2. 应用seccomp过滤器 */
+  ret = apply_seccomp_filter();
+  if (ret != SECCOMP_SUCCESS) {
+    return ret;
   }
 
   /* 3. 降低权限 - 在容器环境中可能失败，这是正常的 */
