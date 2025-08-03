@@ -166,26 +166,26 @@ TEST_CASES = {
             "code": "print('Hello, World!')",
             "expected_stdout": "Hello, World!\n",
             "expected_stderr": "",
-            "expected_exit_code": 0,
+            "expected_status": "success",
         },
         "error": {
             "code": "1/0",
             "expected_stdout": "",
             "expected_stderr_contains": "ZeroDivisionError",
-            "expected_exit_code": 1,
+            "expected_status": "error",
         },
         "syntax_error": {
             "code": "print('Hello, World!')",
             "expected_stdout": "",
             "expected_stderr_contains": "SyntaxError",
-            "expected_exit_code": 1,
+            "expected_status": "error",
         },
         "with_input": {
             "code": "name = input(); print(f'Hello, {name}!')",
             "input_data": "Alice",
             "expected_stdout": "Hello, Alice!\n",
             "expected_stderr": "",
-            "expected_exit_code": 0,
+            "expected_status": "success",
         },
     },
     "nodejs": {
@@ -193,26 +193,26 @@ TEST_CASES = {
             "code": "console.log('Hello, World!');",
             "expected_stdout": "Hello, World!\n",
             "expected_stderr": "",
-            "expected_exit_code": 0,
+            "expected_status": "success",
         },
         "error": {
             "code": "console.log(undefinedVar);",
             "expected_stdout": "",
             "expected_stderr_contains": "ReferenceError",
-            "expected_exit_code": 1,
+            "expected_status": "error",
         },
         "syntax_error": {
             "code": "console.log('Hello, World!')",
             "expected_stdout": "",
             "expected_stderr_contains": "SyntaxError",
-            "expected_exit_code": 1,
+            "expected_status": "error",
         },
         "with_input": {
             "code": "const readline = require('readline'); const rl = readline.createInterface({input: process.stdin, output: process.stdout}); rl.question('', (name) => { console.log(`Hello, ${name}!`); rl.close(); });",
             "input_data": "Alice",
             "expected_stdout": "Hello, Alice!\n",
             "expected_stderr": "",
-            "expected_exit_code": 0,
+            "expected_status": "success",
         },
     },
 }
@@ -258,8 +258,8 @@ def run_test_case(
 
 def _check_test_result(result, expected) -> bool:
     """检查测试结果"""
-    # 检查退出码
-    if result.exit_code != expected.get("expected_exit_code", 0):
+    # 检查状态
+    if result.status.value != expected.get("expected_status", "success"):
         return False
 
     # 检查标准输出

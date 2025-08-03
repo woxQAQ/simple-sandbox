@@ -40,5 +40,3 @@ class ExecutionResult:
     stdout: str
     stderr: str
     execution_time: float
-    exit_code: Optional[int] = None
-    error_message: Optional[str] = None

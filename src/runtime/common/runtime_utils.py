@@ -97,7 +97,6 @@ class RuntimeUtils:
         error_type: str,
         error_message: str,
         execution_time: float,
-        exit_code: int = -1,
     ) -> ExecutionResult:
         """
         创建执行错误结果
@@ -106,14 +105,11 @@ class RuntimeUtils:
             error_type: 错误类型
             error_message: 错误消息
             execution_time: 执行时间
-            exit_code: 退出码
 
         Returns:
             ExecutionResult: 错误结果对象
         """
-        # 创建简洁的错误消息，避免暴露服务器详细信息
-        simple_error_message = f"{error_type}: {error_message}"
-
+        # 记录错误日志
         logger.error(
             f"代码执行{error_type} - 错误: {error_message} - 耗时: {execution_time:.3f}s"
         )
@@ -121,10 +117,8 @@ class RuntimeUtils:
         return ExecutionResult(
             status=ExecutionStatus.ERROR,
             stdout="",
-            stderr=simple_error_message,
+            stderr="代码执行失败",
             execution_time=execution_time,
-            exit_code=exit_code,
-            error_message=simple_error_message,
         )
 
     @staticmethod
@@ -145,8 +139,6 @@ class RuntimeUtils:
             stdout="",
             stderr="代码执行超时",
             execution_time=execution_time,
-            exit_code=-1,
-            error_message="代码执行超时",
         )
 
     @staticmethod
@@ -373,13 +365,13 @@ class RuntimeUtils:
         """
         if result.status == ExecutionStatus.SUCCESS:
             logger.info(
-                f"{language}代码执行成功 - 状态: {result.exit_code} - "
+                f"{language}代码执行成功 - "
                 f"执行时间: {execution_time:.3f}s - "
                 f"stdout长度: {len(result.stdout)} - stderr长度: {len(result.stderr)}"
             )
         else:
             logger.warning(
-                f"{language}代码执行失败 - 状态: {result.exit_code} - "
+                f"{language}代码执行失败 - "
                 f"执行时间: {execution_time:.3f}s - "
                 f"stdout长度: {len(result.stdout)} - stderr长度: {len(result.stderr)} - "
                 f"stderr: {result.stderr[:200]}{'...' if len(result.stderr) > 200 else ''}"

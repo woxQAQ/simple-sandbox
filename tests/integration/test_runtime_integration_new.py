@@ -36,7 +36,6 @@ class TestPythonRuntimeIntegration:
             result = python_runtime.execute(code=code)
 
         assert result.status == ExecutionStatus.SUCCESS
-        assert result.exit_code == 0
         assert "Hello, World!" in result.stdout
         assert result.execution_time > 0
 
@@ -49,8 +48,7 @@ class TestPythonRuntimeIntegration:
             result = python_runtime.execute(code=code)
 
         assert result.status == ExecutionStatus.ERROR
-        assert result.exit_code != 0
-        assert "division by zero" in result.error_message
+        assert "division by zero" in result.stderr
 
     def test_python_timeout_handling(self):
         """测试Python超时处理"""
@@ -61,8 +59,7 @@ class TestPythonRuntimeIntegration:
             result = python_runtime.execute(code=code)
 
         assert result.status == ExecutionStatus.TIMEOUT
-        assert result.exit_code == -1
-        assert "超时" in result.error_message
+        assert "超时" in result.stderr
 
     def test_python_input_handling(self):
         """测试Python输入处理"""
@@ -93,7 +90,6 @@ class TestNodeJSRuntimeIntegration:
             result = nodejs_runtime.execute(code=code)
 
         assert result.status == ExecutionStatus.SUCCESS
-        assert result.exit_code == 0
         assert "Hello, Node.js!" in result.stdout
         assert result.execution_time > 0
 
@@ -106,11 +102,9 @@ class TestNodeJSRuntimeIntegration:
             result = nodejs_runtime.execute(code=code)
 
         assert result.status == ExecutionStatus.ERROR
-        assert result.exit_code != 0
         # 错误消息可能包含"ReferenceError"或"not defined"
         assert (
-            "ReferenceError" in result.error_message
-            or "not defined" in result.error_message
+            "ReferenceError" in result.stderr or "not defined" in result.stderr
         )
 
     def test_nodejs_timeout_handling(self):
@@ -122,8 +116,7 @@ class TestNodeJSRuntimeIntegration:
             result = nodejs_runtime.execute(code=code)
 
         assert result.status == ExecutionStatus.TIMEOUT
-        assert result.exit_code == -1
-        assert "超时" in result.error_message
+        assert "超时" in result.stderr
 
 
 class TestConfigurationIntegration:

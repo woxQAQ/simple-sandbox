@@ -191,8 +191,7 @@ class SimpleHTTPRequestHandler(BaseHTTPRequestHandler):
 
             logger.info(
                 f"代码执行完成 - {client_ip} - 状态: {result.status.value} - "
-                f"执行时间: {result.execution_time:.3f}s - "
-                f"退出码: {result.exit_code}"
+                f"执行时间: {result.execution_time:.3f}s"
             )
 
             # 返回响应
@@ -200,13 +199,10 @@ class SimpleHTTPRequestHandler(BaseHTTPRequestHandler):
                 "status": result.status.value,
                 "stdout": result.stdout,
                 "execution_time": result.execution_time,
-                "exit_code": result.exit_code,
             }
 
-            # 只包含error字段，避免暴露服务器详细信息
-            if result.error_message:
-                response["error"] = result.error_message
-            elif result.stderr:
+            # 如果有错误信息，包含error字段
+            if result.stderr:
                 response["error"] = result.stderr
             self._send_json_response(response)
 
