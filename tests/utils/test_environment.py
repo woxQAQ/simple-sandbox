@@ -24,6 +24,8 @@ class TestSandboxEnvironment:
         # 设置测试环境变量
         os.environ["TEST_MODE"] = "true"
         os.environ["DEBUG_MODE"] = "true"
+        os.environ["SANDBOX_USER_ID"] = "1000"
+        os.environ["SANDBOX_GROUP_ID"] = "1000"
 
         # 创建临时目录模拟容器环境
         self._create_test_directories()
@@ -36,7 +38,7 @@ class TestSandboxEnvironment:
                 shutil.rmtree(temp_dir)
 
         # 清理环境变量
-        for key in ["TEST_MODE", "DEBUG_MODE"]:
+        for key in ["TEST_MODE", "DEBUG_MODE", "SANDBOX_USER_ID", "SANDBOX_GROUP_ID"]:
             if key in os.environ:
                 del os.environ[key]
 

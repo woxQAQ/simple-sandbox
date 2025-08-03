@@ -78,11 +78,16 @@ class SeccompInjector:
             lib_name = "libseccomp_injector.so"
 
         # 首先尝试生产环境路径
-        search_path = Path(f"/var/sandbox/sandbox-{language}")
-        if search_path.exists():
-            lib_path = search_path / lib_name
-            if lib_path.exists():
-                return str(lib_path)
+        search_paths = [
+            Path(f"/var/sandbox/sandbox-{language}"),
+            Path(f"/var/sandbox/{language}"),
+        ]
+
+        for search_path in search_paths:
+            if search_path.exists():
+                lib_path = search_path / lib_name
+                if lib_path.exists():
+                    return str(lib_path)
 
         # 如果生产环境路径不存在，尝试开发环境build目录
         build_path = (
@@ -105,10 +110,25 @@ class SeccompInjector:
             library_path = self._find_library_path(self._language)
         elif os.path.isdir(library_path):
             # 如果传入的是目录，根据语言构建完整的库路径
+            # 首先尝试直接在目录中查找
             if self._language:
-                library_path = os.path.join(
+                direct_path = os.path.join(
                     library_path, f"libseccomp_injector_{self._language}.so"
                 )
+                if os.path.exists(direct_path):
+                    library_path = direct_path
+                else:
+                    # 尝试在子目录中查找
+                    subdir_path = os.path.join(
+                        library_path,
+                        self._language,
+                        f"libseccomp_injector_{self._language}.so",
+                    )
+                    if os.path.exists(subdir_path):
+                        library_path = subdir_path
+                    else:
+                        # 回退到自动查找
+                        library_path = self._find_library_path(self._language)
             else:
                 library_path = os.path.join(
                     library_path, "libseccomp_injector.so"

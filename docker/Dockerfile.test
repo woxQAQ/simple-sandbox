@@ -48,6 +48,8 @@ RUN useradd -m -u 1000 sandbox && \
 
 # Set environment variables
 ENV PYTHONPATH=/app
+ENV SANDBOX_USER_ID=1000
+ENV SANDBOX_GROUP_ID=1000
 ENV NODE_PATH=/app/src/runtime/nodejs
 ENV PYTHONUNBUFFERED=1
 ENV TEST_MODE=false

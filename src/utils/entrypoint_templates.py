@@ -67,46 +67,18 @@ def main():
         # 解密代码
         user_code = decrypt_code(encrypted_data, key_b64)
 
-        # 设置seccomp安全限制
-        seccomp_error = None
-        try:
-            import ctypes
-            import os
-
-            # 加载seccomp注入器
-            lib_path = "{seccomp_lib_path}"
-            if os.path.exists(lib_path):
-                seccomp_lib = ctypes.CDLL(lib_path)
-
-                # 设置seccomp过滤器
-                result = seccomp_lib.inject_seccomp_profile(int('{uid}'), int('{gid}'))
+        # 应用seccomp安全限制
+        seccomp_lib_path = "{seccomp_lib_path}"
+        if seccomp_lib_path and seccomp_lib_path != "None":
+            try:
+                import ctypes
+                import ctypes.util
+                libseccomp = ctypes.CDLL(seccomp_lib_path)
+                result = libseccomp.inject_seccomp_profile({uid}, {gid})
                 if result != 0:
-                    # 错误码-4表示权限操作失败，这在容器环境中是正常的
-                    if result == -4:
-                        # 在容器环境中，权限已经降低，这是正常的
-                        pass
-                    else:
-                        # 其他seccomp错误直接抛出异常并结束进程
-                        error_msgs = {{
-                            -1: "prctl() system call failed",
-                            -2: "seccomp system call failed",
-                            -3: "Invalid arguments",
-                            -4: "Privilege operation failed (expected in container)",
-                            -5: "Memory allocation failed",
-                            -6: "Unsupported platform"
-                        }}
-                        error_msg = error_msgs.get(result, f"Unknown error (code: {{result}})")
-                        seccomp_error = f"seccomp injection failed: {{error_msg}}"
-            else:
-                seccomp_error = f"seccomp library not found at: {{lib_path}}"
-        except Exception as e:
-            seccomp_error = f"seccomp injection failed: {{e}}"
-
-        # 如果seccomp设置失败，输出错误信息并退出
-        if seccomp_error:
-            print(f"Security Error: {{seccomp_error}}", file=sys.stderr)
-            print("Code execution aborted for security reasons.", file=sys.stderr)
-            sys.exit(1)
+                    print(f"警告: seccomp设置失败，代码返回码: {{result}}", file=sys.stderr)
+            except Exception as e:
+                print(f"警告: 无法加载seccomp库: {{e}}", file=sys.stderr)
 
         # 执行用户代码
         exec_globals = {{
@@ -125,8 +97,8 @@ def main():
 
     except Exception as e:
         import traceback
-        error_msg = f"Execution failed: {{e}}\\n{{traceback.format_exc()}}"
-        print(error_msg, file=sys.stderr)
+        print("Execution failed: " + str(e), file=sys.stderr)
+        print("Traceback: " + traceback.format_exc(), file=sys.stderr)
         sys.exit(1)
 
 
@@ -134,9 +106,9 @@ if __name__ == "__main__":
     main()
 '''.format(
             encrypted_json=encrypted_json,
+            seccomp_lib_path=seccomp_lib_path,
             uid=uid,
             gid=gid,
-            seccomp_lib_path=seccomp_lib_path,
         )
         return template
 

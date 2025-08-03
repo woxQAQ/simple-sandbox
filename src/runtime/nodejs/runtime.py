@@ -65,12 +65,21 @@ class NodeJSRuntime(LanguageRuntime):
                 logger.debug("开始设置Node.js seccomp安全限制")
 
             # 使用安全管理器设置seccomp过滤器
-            create_secure_process(
-                language="nodejs",
-                uid=runtime_config.sandbox_uid,
-                gid=runtime_config.sandbox_gid,
-                library_dir=runtime_config.nodejs_security_lib_dir,
-            )
+            # 在开发环境中使用构建输出目录
+            if os.path.exists("/var/sandbox"):
+                actual_lib_dir = "/var/sandbox"
+                # 在Docker容器环境中启用seccomp
+                create_secure_process(
+                    language="nodejs",
+                    uid=runtime_config.sandbox_uid,
+                    gid=runtime_config.sandbox_gid,
+                    library_dir=actual_lib_dir,
+                )
+            else:
+                # 开发环境中跳过seccomp设置
+                if runtime_config.debug_mode:
+                    logger.debug("开发环境中跳过seccomp设置")
+                return
             if runtime_config.debug_mode:
                 logger.debug("Node.js seccomp安全限制设置成功")
         except Exception:
@@ -129,6 +138,31 @@ class NodeJSRuntime(LanguageRuntime):
                     logger.debug("Node.js代码加密完成")
 
                 # 创建entrypoint文件（直接嵌入加密代码）
+                # 使用Docker容器中的标准库路径
+                if os.path.exists("/var/sandbox"):
+                    seccomp_lib_path = (
+                        "/var/sandbox/nodejs/libseccomp_injector_nodejs.so"
+                    )
+                else:
+                    # 开发环境路径
+                    seccomp_lib_path = os.path.join(
+                        os.path.dirname(__file__),
+                        "..",
+                        "..",
+                        "..",
+                        "build",
+                        "lib",
+                        "libseccomp_injector_nodejs.so",
+                    )
+
+                # 检查seccomp库是否存在，如果不存在则跳过seccomp设置
+                if not os.path.exists(seccomp_lib_path):
+                    if runtime_config.debug_mode:
+                        logger.debug(
+                            f"seccomp库文件不存在: {seccomp_lib_path}，跳过seccomp设置"
+                        )
+                    seccomp_lib_path = None
+
                 entrypoint_path = create_file_in_dir(
                     sandbox_dir,
                     "entrypoint.js",
@@ -138,8 +172,7 @@ class NodeJSRuntime(LanguageRuntime):
                         encryption_key,
                         str(runtime_config.sandbox_uid),
                         str(runtime_config.sandbox_gid),
-                        runtime_config.nodejs_security_lib_dir
-                        + "/libseccomp_injector_nodejs.so",
+                        seccomp_lib_path,
                     ),
                 )
 

@@ -90,10 +90,16 @@ class RuntimeConfig:
         self.python_plugins_dir = self.python_runtime_dir / "plugins"
         self.nodejs_plugins_dir = self.nodejs_runtime_dir / "plugins"
 
-        # 测试模式下使用build目录作为安全库路径
-        build_lib_dir = self.base_dir.parent / "build" / "lib"
-        self.python_security_lib_dir = str(build_lib_dir)
-        self.nodejs_security_lib_dir = str(build_lib_dir)
+        # 检查是否在Docker容器中
+        if os.path.exists("/var/sandbox"):
+            # 在Docker容器中，使用容器内的安全库路径
+            self.python_security_lib_dir = "/var/sandbox/python"
+            self.nodejs_security_lib_dir = "/var/sandbox/nodejs"
+        else:
+            # 在开发环境中，使用build目录作为安全库路径
+            build_lib_dir = self.base_dir.parent / "build" / "lib"
+            self.python_security_lib_dir = str(build_lib_dir)
+            self.nodejs_security_lib_dir = str(build_lib_dir)
 
     def get_python_command(self) -> str:
         """获取Python命令"""
