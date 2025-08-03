@@ -9,7 +9,6 @@ from src.runtime.common.base import LanguageRuntime
 from src.runtime.common.runtime_utils import RuntimeUtils
 from src.runtime.logging_config import create_runtime_logger
 from src.runtime.python.extensions import PythonASTContext, python_ast_registry
-from src.security import create_secure_process
 from src.utils import temporary_sandbox_dir
 
 logger = create_runtime_logger(__name__)
@@ -102,7 +101,7 @@ class PythonRuntime(LanguageRuntime):
             # 文件系统隔离失败时，记录错误但继续执行
             return
 
-    def _setup_seccomp_security(self):
+    def _setup_seccomp_security(self, sandbox_dir):
         """在子进程中设置seccomp安全限制"""
         # 检查是否启用了seccomp
         try:
@@ -128,12 +127,17 @@ class PythonRuntime(LanguageRuntime):
 
                 # 在容器环境中，只有root用户才能设置seccomp
                 if current_uid == 0:
-                    # 以root用户运行，可以设置seccomp
-                    create_secure_process(
+                    # 以root用户运行，可以设置seccomp和chroot
+                    from src.security.injection.seccomp_wrapper import (
+                        inject_seccomp_for_language_with_chroot,
+                    )
+
+                    inject_seccomp_for_language_with_chroot(
                         language="python",
                         uid=runtime_config.sandbox_uid,
                         gid=runtime_config.sandbox_gid,
-                        library_dir=actual_lib_dir,
+                        chroot_dir=sandbox_dir,
+                        library_path=actual_lib_dir,
                     )
                     if runtime_config.debug_mode:
                         logger.debug("seccomp安全限制设置成功")
@@ -224,7 +228,7 @@ class PythonRuntime(LanguageRuntime):
                     # 首先设置文件系统隔离
                     self._setup_filesystem_isolation(sandbox_dir)
                     # 然后设置seccomp安全限制
-                    self._setup_seccomp_security()
+                    self._setup_seccomp_security(sandbox_dir)
 
                 process = subprocess.Popen(  # nosec B603
                     command,
