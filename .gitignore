@@ -14,3 +14,37 @@ wheels/
 coverage.xml
 *.log
 reports/
+
+# Test and coverage files
+htmlcov/
+.pytest_cache/
+.coverage.*
+coverage.xml
+*.cover
+.hypothesis/
+
+# Temporary files
+*.tmp
+*.temp
+*.swp
+*.swo
+*~
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Log files
+server.log
+test_log.log
+*.log.*
+
+# Build artifacts
+*.so
+*.dll
+*.dylib

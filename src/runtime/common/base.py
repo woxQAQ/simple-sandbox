@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
 from typing import Dict, List
 
-from .models import ExecutionResult
+from src.models import ExecutionResult
 
 
 class LanguageRuntime(ABC):

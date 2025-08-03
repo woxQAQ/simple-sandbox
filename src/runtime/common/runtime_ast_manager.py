@@ -3,11 +3,14 @@
 协调各语言的AST转换
 """
 
+import logging
 from typing import Any, Dict
 
 from src.runtime.nodejs.extensions import nodejs_ast_manager
 from src.runtime.python.extensions import python_ast_registry
 from src.runtime.python.transformer import PythonASTContext
+
+logger = logging.getLogger(__name__)
 
 
 class RuntimeASTManager:
@@ -33,7 +36,7 @@ class RuntimeASTManager:
         try:
             return handler(code, context)
         except Exception as e:
-            print(f"AST转换失败: {e}")
+            logger.warning(f"AST转换失败: {e}")
             return code
 
     def _transform_python(self, code: str, context: Dict[str, Any]) -> str:

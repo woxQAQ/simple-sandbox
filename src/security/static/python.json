@@ -1,6 +1,6 @@
 {
   "language": "python",
-  "description": "Python语言的系统调用白名单配置 - 增强版本",
+  "description": "Python语言的系统调用白名单配置 - 安全沙盒版本",
   "defaultAction": "SCMP_ACT_ERRNO",
   "architectures": [
     "SCMP_ARCH_X86_64"

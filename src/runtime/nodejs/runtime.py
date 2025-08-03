@@ -1,22 +1,16 @@
 import os
 import subprocess  # nosec B404
 import time
-import traceback
 from typing import Dict, List
 
 from src.config import runtime_config
+from src.models import ExecutionResult, ExecutionStatus
 from src.runtime.common.base import LanguageRuntime
-from src.runtime.common.models import ExecutionResult, ExecutionStatus
+from src.runtime.common.runtime_utils import RuntimeUtils
 from src.runtime.logging_config import create_runtime_logger
 from src.runtime.nodejs.extensions import nodejs_ast_manager
 from src.security import create_secure_process
-from src.utils import (
-    create_file_in_dir,
-    entrypoint_templates,
-    set_executable_permission,
-    temporary_sandbox_dir,
-)
-from src.utils.crypto_utils import CryptoUtils
+from src.utils import temporary_sandbox_dir
 
 logger = create_runtime_logger(__name__)
 
@@ -49,7 +43,6 @@ class NodeJSRuntime(LanguageRuntime):
         except Exception as e:
             # 如果AST转换失败，继续使用原始代码
             logger.warning(f"AST转换失败，使用原始代码: {e}")
-            print(f"AST转换失败，使用原始代码: {e}")
 
         return processed_code
 
@@ -105,20 +98,7 @@ class NodeJSRuntime(LanguageRuntime):
             processed_code = self.preprocess_code(code)
         except Exception as e:
             execution_time = time.time() - start_time
-            logger.error(
-                f"Node.js代码预处理失败 - 错误: {e} - 耗时: {execution_time:.3f}s"
-            )
-            error_msg = (
-                f"Node.js代码预处理失败: {str(e)}\n{traceback.format_exc()}"
-            )
-            return ExecutionResult(
-                status=ExecutionStatus.ERROR,
-                stdout="",
-                stderr=error_msg,
-                execution_time=execution_time,
-                exit_code=-1,
-                error_message=error_msg,
-            )
+            return RuntimeUtils.create_preprocess_error(e, execution_time)
 
         # 使用上下文管理器创建临时沙盒目录
         with temporary_sandbox_dir() as sandbox_dir:
@@ -126,71 +106,31 @@ class NodeJSRuntime(LanguageRuntime):
                 logger.debug(f"创建Node.js临时沙盒目录: {sandbox_dir}")
 
             try:
-                # 创建加密工具实例
-                crypto_utils = CryptoUtils()
-
-                # 生成加密密钥并加密代码
-                encryption_key = crypto_utils.generate_encryption_key()
-                encrypted_code = crypto_utils.encrypt_code(
-                    processed_code, encryption_key
+                # 使用公共工具加密代码
+                encrypted_code, encryption_key = RuntimeUtils.encrypt_code(
+                    processed_code
                 )
-                if runtime_config.debug_mode:
-                    logger.debug("Node.js代码加密完成")
 
-                # 创建entrypoint文件（直接嵌入加密代码）
-                # 使用Docker容器中的标准库路径
-                if os.path.exists("/var/sandbox"):
-                    seccomp_lib_path = (
-                        "/var/sandbox/nodejs/libseccomp_injector_nodejs.so"
-                    )
-                else:
-                    # 开发环境路径
-                    seccomp_lib_path = os.path.join(
-                        os.path.dirname(__file__),
-                        "..",
-                        "..",
-                        "..",
-                        "build",
-                        "lib",
-                        "libseccomp_injector_nodejs.so",
-                    )
+                # 获取seccomp库路径
+                seccomp_lib_path = RuntimeUtils.get_seccomp_lib_path("nodejs")
 
-                # 检查seccomp库是否存在，如果不存在则跳过seccomp设置
-                if not os.path.exists(seccomp_lib_path):
-                    if runtime_config.debug_mode:
-                        logger.debug(
-                            f"seccomp库文件不存在: {seccomp_lib_path}，跳过seccomp设置"
-                        )
-                    seccomp_lib_path = None
-
-                entrypoint_path = create_file_in_dir(
+                # 创建entrypoint文件
+                entrypoint_path = RuntimeUtils.create_entrypoint_file(
                     sandbox_dir,
-                    "entrypoint.js",
-                    entrypoint_templates.create_entrypoint(
-                        "nodejs",
-                        encrypted_code,
-                        encryption_key,
-                        str(runtime_config.sandbox_uid),
-                        str(runtime_config.sandbox_gid),
-                        seccomp_lib_path,
-                    ),
+                    "nodejs",
+                    encrypted_code,
+                    encryption_key,
+                    seccomp_lib_path,
                 )
 
-                # 设置执行权限
-                set_executable_permission(entrypoint_path)
-                if runtime_config.debug_mode:
-                    logger.debug(
-                        f"创建Node.js entrypoint文件: {entrypoint_path}"
-                    )
-
-                # 构建执行命令（只传递加密密钥）
+                # 构建执行命令
                 node_command = self.get_command()
                 command = node_command + [entrypoint_path, encryption_key]
                 if runtime_config.debug_mode:
                     logger.debug(f"Node.js执行命令: {' '.join(command)}")
 
-                # 传递基本的环境变量，包括PATH
-                process_env = {"PATH": os.environ.get("PATH", "")}
+                # 设置进程环境变量
+                process_env = RuntimeUtils.setup_process_environment()
 
                 # 执行进程，在preexecfn中设置seccomp安全限制
                 process = subprocess.Popen(  # nosec B603
@@ -211,7 +151,8 @@ class NodeJSRuntime(LanguageRuntime):
 
                 execution_time = time.time() - start_time
 
-                return ExecutionResult(
+                # 创建执行结果
+                result = ExecutionResult(
                     status=(
                         ExecutionStatus.SUCCESS
                         if process.returncode == 0
@@ -224,36 +165,22 @@ class NodeJSRuntime(LanguageRuntime):
                     error_message=stderr if process.returncode != 0 else None,
                 )
 
+                # 记录执行结果日志
+                RuntimeUtils.log_execution_result(
+                    "Node.js", result, execution_time
+                )
+
+                return result
+
             except subprocess.TimeoutExpired:
                 execution_time = time.time() - start_time
-                logger.warning(
-                    f"Node.js代码执行超时 - 耗时: {execution_time:.3f}s"
-                )
                 # 确保进程被终止
                 process.kill()
                 process.wait()
-                return ExecutionResult(
-                    status=ExecutionStatus.TIMEOUT,
-                    stdout="",
-                    stderr="Execution timed out",
-                    execution_time=execution_time,
-                    exit_code=-1,
-                    error_message="Execution timed out",
-                )
+                return RuntimeUtils.create_timeout_error(execution_time)
 
             except Exception as e:
                 execution_time = time.time() - start_time
-                logger.error(
-                    f"Node.js代码执行异常 - 错误: {e} - 耗时: {execution_time:.3f}s"
-                )
-                error_msg = (
-                    f"Node.js代码执行异常: {str(e)}\n{traceback.format_exc()}"
-                )
-                return ExecutionResult(
-                    status=ExecutionStatus.ERROR,
-                    stdout="",
-                    stderr=error_msg,
-                    execution_time=execution_time,
-                    exit_code=-1,
-                    error_message=error_msg,
+                return RuntimeUtils.create_execution_error(
+                    "执行异常", str(e), execution_time
                 )

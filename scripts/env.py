@@ -64,7 +64,6 @@ def main():
         "/etc/ssl/certs/ca-certificates.crt",
         "/etc/nsswitch.conf",
         "/etc/resolv.conf",
-        # "/run/systemd/resolve/stub-resolv.conf",
         "/etc/hosts",
     ]
 

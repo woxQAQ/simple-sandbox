@@ -16,6 +16,7 @@
 #define SECCOMP_ERROR_PRIVILEGE -4
 #define SECCOMP_ERROR_MEMORY -5
 #define SECCOMP_ERROR_UNSUPPORTED -6
+#define SECCOMP_ERROR_CHROOT -7
 
 /* 函数声明 */
 #ifdef __cplusplus
@@ -49,6 +50,22 @@ int apply_seccomp_filter(void);
  * @return 成功返回SECCOMP_SUCCESS，失败返回错误码
  */
 int inject_seccomp_profile(uid_t uid, gid_t gid);
+
+/**
+ * 设置chroot环境
+ * @param chroot_dir chroot目录路径
+ * @return 成功返回SECCOMP_SUCCESS，失败返回错误码
+ */
+int setup_chroot_environment(const char *chroot_dir);
+
+/**
+ * 完整的seccomp注入流程（包含chroot）
+ * @param uid 目标用户ID
+ * @param gid 目标组ID
+ * @param chroot_dir chroot目录路径（可为NULL，表示不使用chroot）
+ * @return 成功返回SECCOMP_SUCCESS，失败返回错误码
+ */
+int inject_seccomp_profile_with_chroot(uid_t uid, gid_t gid, const char *chroot_dir);
 
 /**
  * 获取错误描述

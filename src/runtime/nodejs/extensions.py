@@ -5,12 +5,15 @@ Node.js原生AST插件系统
 """
 
 import json
+import logging
 import subprocess  # nosec B404
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Dict, Optional
 
 from src.config import runtime_config
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -73,17 +76,17 @@ class NodeJSASTManager:
                 else:
                     return code
             else:
-                print(f"Node.js转换错误: {result.stderr}")
+                logger.warning(f"Node.js转换错误: {result.stderr}")
                 return code
 
         except subprocess.TimeoutExpired:
-            print("Node.js转换超时")
+            logger.warning("Node.js转换超时")
             return code
         except FileNotFoundError:
-            print("Node.js未找到，跳过JavaScript AST转换")
+            logger.warning("Node.js未找到，跳过JavaScript AST转换")
             return code
         except Exception as e:
-            print(f"AST转换失败: {e}")
+            logger.warning(f"AST转换失败: {e}")
             return code
 
 

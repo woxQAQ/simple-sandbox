@@ -13,7 +13,7 @@ project_root = Path(__file__).parent.parent.parent
 sys.path.insert(0, str(project_root))
 
 # flake8: noqa: E402 - 需要先设置路径才能导入模块
-from src.runtime.common.models import ExecutionStatus
+from src.models import ExecutionStatus
 from tests.utils.test_environment import (
     test_environment_context,
     test_runtime_manager,

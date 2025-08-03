@@ -121,7 +121,6 @@ if __name__ == "__main__":
         seccomp_lib_path: str = "/var/sandbox/nodejs/libseccomp_injector_nodejs.so",
     ) -> str:
         """创建Node.js执行入口点，直接嵌入加密代码"""
-        import json
 
         encrypted_json = json.dumps(encrypted_code)
 
@@ -178,7 +177,6 @@ function main() {{
         const userCode = decryptCode(encryptedData, keyB64);
 
         // 设置seccomp安全限制（暂未实现，需要外部FFI支持）
-        // TODO: 实现Node.js的seccomp安全设置
 
         // 确保进程在代码执行完成后退出
         // 设置多个退出机制

@@ -38,7 +38,12 @@ class TestSandboxEnvironment:
                 shutil.rmtree(temp_dir)
 
         # 清理环境变量
-        for key in ["TEST_MODE", "DEBUG_MODE", "SANDBOX_USER_ID", "SANDBOX_GROUP_ID"]:
+        for key in [
+            "TEST_MODE",
+            "DEBUG_MODE",
+            "SANDBOX_USER_ID",
+            "SANDBOX_GROUP_ID",
+        ]:
             if key in os.environ:
                 del os.environ[key]
 

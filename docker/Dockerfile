@@ -103,7 +103,7 @@ COPY pyproject.toml ./
 COPY --from=builder /usr/local/lib/python3.11/site-packages /usr/local/lib/python3.11/site-packages
 COPY --from=builder /app/src/runtime/nodejs/node_modules ./src/runtime/nodejs/node_modules
 
-# Create sandbox directories and copy seccomp libraries
+# Copy seccomp libraries to language-specific directories
 RUN mkdir -p /var/sandbox/python /var/sandbox/nodejs && \
     cp /app/build/lib/libseccomp_injector_python.so /var/sandbox/python/ && \
     cp /app/build/lib/libseccomp_injector_nodejs.so /var/sandbox/nodejs/
