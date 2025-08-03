@@ -1,6 +1,6 @@
+import ctypes
 import os
 import sys
-import ctypes
 
 key_b64 = sys.argv[1]
 if not key_b64:
@@ -25,7 +25,7 @@ def decrypt_code(code, key):
     return bytes(code)
 
 
-user_code = decrypt_code({{code}}, key_b64)
+user_code = decrypt_code({{code}}, key_b64)  # noqa
 
 libseccomp = ctypes.CDLL("./libseccomp_injector_python.so")
 result = libseccomp.inject_seccomp_profile(uid, gid)

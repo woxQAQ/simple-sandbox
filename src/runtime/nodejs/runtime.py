@@ -7,7 +7,6 @@ from src.runtime.common.base import LanguageRuntime
 from src.runtime.logging_config import create_runtime_logger
 from src.runtime.nodejs.utils import NodeJSRuntimeUtils
 from src.utils.crypto_utils import CryptoUtils
-from src.utils.runtime_utils import RuntimeUtils
 
 logger = create_runtime_logger(__name__)
 
