@@ -1,3 +1,4 @@
+import os
 import subprocess  # nosec B404
 import time
 import uuid
@@ -67,7 +68,6 @@ class PythonRuntime(LanguageRuntime):
             encrypted_code.decode(),
         )
 
-        import os
         tmp_dir = f"{python_sandbox_dir}/tmp"
         os.makedirs(tmp_dir, exist_ok=True)
         entrypoint_path = f"{tmp_dir}/{uuid.uuid4()}.py"

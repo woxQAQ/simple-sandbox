@@ -29,5 +29,7 @@ class CryptoUtils:
         # 使用XOR加密
         code_bytes = code.encode("utf-8")
         encrypted_data = CryptoUtils._xor_encrypt(code_bytes, key)
+        # 使用base64编码以便安全嵌入Python代码
+        encrypted_b64 = base64.b64encode(encrypted_data).decode('utf-8')
 
-        return (encrypted_data, key)
+        return (encrypted_b64, key)

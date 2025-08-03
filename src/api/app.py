@@ -195,16 +195,21 @@ class SimpleHTTPRequestHandler(BaseHTTPRequestHandler):
                 f"执行时间: {result.execution_time:.3f}s"
             )
 
+            # 如果有错误输出，记录错误和堆栈
+            if result.stderr:
+                logger.error(
+                    f"代码执行错误 - {client_ip} - 错误信息: {result.stderr}"
+                )
+
             # 返回响应
             response = {
                 "status": result.status.value,
                 "stdout": result.stdout,
+                "stderr": result.stderr,
                 "execution_time": result.execution_time,
             }
 
             # 如果有错误信息，包含error字段
-            if result.stderr:
-                response["error"] = result.stderr
             self._send_json_response(response)
 
         except json.JSONDecodeError as e:
