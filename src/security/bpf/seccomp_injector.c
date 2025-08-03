@@ -108,6 +108,9 @@ static void log_error(const char *msg, int error_code) {
 
 static void log_info(const char *msg) {
   syslog(LOG_INFO, "seccomp_injector: %s", msg);
+  if (getenv("SECCOMP_VERBOSE") != NULL) {
+    fprintf(stdout, "seccomp_injector: %s", msg);
+  }
 }
 
 static void log_warning(const char *msg, int error_code) {
