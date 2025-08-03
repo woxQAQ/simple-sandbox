@@ -30,7 +30,7 @@ class NodeJSRuntime(LanguageRuntime):
 
     def _render_entrypoint(self, enc_code: str) -> str:
         content = ""
-        with open("./src/runtime/nodejs/entrypoint.js", "w") as f:
+        with open("./src/runtime/nodejs/entrypoint.js", "r") as f:
             content = f.read()
             return content.replace("{{ code }}", enc_code)
 
