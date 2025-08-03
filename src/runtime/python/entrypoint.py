@@ -39,7 +39,7 @@ user_code = decrypt_code("{{code}}", key_b64)  # noqa
 try:
     libseccomp = ctypes.CDLL("./libseccomp_injector_python.so")
     result = libseccomp.inject_seccomp_profile(int(uid), int(gid))
-    if not result:
+    if result != 0:
         print(
             f"Error: Failed to inject seccomp profile {result}", file=sys.stderr
         )
