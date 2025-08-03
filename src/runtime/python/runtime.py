@@ -79,6 +79,7 @@ class PythonRuntime(LanguageRuntime):
             runtime_config.get_python_command(),
             entrypoint_path,
             encryption_key,
+            python_sandbox_dir,
             str(runtime_config.sandbox_uid),
             str(runtime_config.sandbox_gid),
         ]

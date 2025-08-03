@@ -12,7 +12,7 @@ if not lib_path:
     exit(-1)
 os.chdir(lib_path)
 uid = sys.argv[3]
-gid = sys.argv[3]
+gid = sys.argv[4]
 if not uid and not gid:
     exit(-1)
 
