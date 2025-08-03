@@ -11,7 +11,7 @@ pkgs.mkShell {
     python311
     zsh
   ];
-  shellHook = # zsh
+  shellHook = # sh
     ''
       # 设置zsh作为默认shell
       export SHELL="${pkgs.zsh}/bin/zsh"
@@ -26,8 +26,6 @@ pkgs.mkShell {
       uv sync --dev
       uv sync
       echo "virtualenv activate at ${venvDir}"
-
-      # 切换到zsh
       exec zsh
     '';
 }

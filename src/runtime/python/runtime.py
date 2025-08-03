@@ -89,6 +89,7 @@ class PythonRuntime(LanguageRuntime):
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
             text=True,
+            env={"SECCOMP_VERBOSE": "true"},
             cwd=python_sandbox_dir,
         )
 
