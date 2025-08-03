@@ -5,7 +5,6 @@
 
 import os
 import shutil
-import traceback
 import uuid
 from contextlib import contextmanager
 from typing import Dict, Optional
@@ -112,9 +111,8 @@ class RuntimeUtils:
         Returns:
             ExecutionResult: 错误结果对象
         """
-        full_error_message = (
-            f"{error_type}: {error_message}\\n{traceback.format_exc()}"
-        )
+        # 创建简洁的错误消息，避免暴露服务器详细信息
+        simple_error_message = f"{error_type}: {error_message}"
 
         logger.error(
             f"代码执行{error_type} - 错误: {error_message} - 耗时: {execution_time:.3f}s"
@@ -123,10 +121,10 @@ class RuntimeUtils:
         return ExecutionResult(
             status=ExecutionStatus.ERROR,
             stdout="",
-            stderr=full_error_message,
+            stderr=simple_error_message,
             execution_time=execution_time,
             exit_code=exit_code,
-            error_message=full_error_message,
+            error_message=simple_error_message,
         )
 
     @staticmethod
@@ -145,10 +143,10 @@ class RuntimeUtils:
         return ExecutionResult(
             status=ExecutionStatus.TIMEOUT,
             stdout="",
-            stderr="Execution timed out",
+            stderr="代码执行超时",
             execution_time=execution_time,
             exit_code=-1,
-            error_message="Execution timed out",
+            error_message="代码执行超时",
         )
 
     @staticmethod

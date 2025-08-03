@@ -50,7 +50,7 @@ class TestPythonRuntimeIntegration:
 
         assert result.status == ExecutionStatus.ERROR
         assert result.exit_code != 0
-        assert "ZeroDivisionError" in result.error_message
+        assert "division by zero" in result.error_message
 
     def test_python_timeout_handling(self):
         """测试Python超时处理"""
@@ -62,7 +62,7 @@ class TestPythonRuntimeIntegration:
 
         assert result.status == ExecutionStatus.TIMEOUT
         assert result.exit_code == -1
-        assert "timed out" in result.error_message
+        assert "超时" in result.error_message
 
     def test_python_input_handling(self):
         """测试Python输入处理"""
@@ -123,7 +123,7 @@ class TestNodeJSRuntimeIntegration:
 
         assert result.status == ExecutionStatus.TIMEOUT
         assert result.exit_code == -1
-        assert "timed out" in result.error_message
+        assert "超时" in result.error_message
 
 
 class TestConfigurationIntegration:

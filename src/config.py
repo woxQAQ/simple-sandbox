@@ -101,7 +101,7 @@ class RuntimeConfig:
         """获取Python命令"""
         if self.test_mode:
             return "python3"
-        return os.getenv("PYTHON_PATH", "python3")
+        return os.getenv("PYTHON_PATH", "python")
 
     def get_nodejs_command(self) -> str:
         """获取Node.js命令"""
@@ -141,7 +141,7 @@ class Config:
     """项目配置类"""
 
     # 运行时路径配置
-    PYTHON_PATH = os.getenv("PYTHON_PATH", "python3")
+    PYTHON_PATH = os.getenv("PYTHON_PATH", "python")
     NODEJS_PATH = os.getenv("NODEJS_PATH", "node")
 
     # 并发控制配置

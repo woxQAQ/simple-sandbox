@@ -96,9 +96,7 @@ def main():
             sys.exit(1)
 
     except Exception as e:
-        import traceback
-        print("Execution failed: " + str(e), file=sys.stderr)
-        print("Traceback: " + traceback.format_exc(), file=sys.stderr)
+        print("代码执行失败: " + str(e), file=sys.stderr)
         sys.exit(1)
 
 

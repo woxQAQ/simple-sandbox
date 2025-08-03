@@ -199,11 +199,15 @@ class SimpleHTTPRequestHandler(BaseHTTPRequestHandler):
             response = {
                 "status": result.status.value,
                 "stdout": result.stdout,
-                "stderr": result.stderr,
                 "execution_time": result.execution_time,
                 "exit_code": result.exit_code,
-                "error": result.error_message,
             }
+
+            # 只包含error字段，避免暴露服务器详细信息
+            if result.error_message:
+                response["error"] = result.error_message
+            elif result.stderr:
+                response["error"] = result.stderr
             self._send_json_response(response)
 
         except json.JSONDecodeError as e:
