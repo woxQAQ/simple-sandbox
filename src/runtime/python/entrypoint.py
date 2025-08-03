@@ -40,7 +40,9 @@ try:
     libseccomp = ctypes.CDLL("./libseccomp_injector_python.so")
     result = libseccomp.inject_seccomp_profile(int(uid), int(gid))
     if not result:
-        print("Error: Failed to inject seccomp profile", file=sys.stderr)
+        print(
+            f"Error: Failed to inject seccomp profile {result}", file=sys.stderr
+        )
         exit(-1)
 except Exception as e:
     print(f"Error: Failed to load seccomp library: {e}", file=sys.stderr)
