@@ -35,9 +35,18 @@ def decrypt_code(code_b64, key):
 
 user_code = decrypt_code("{{code}}", key_b64)  # noqa
 
-libseccomp = ctypes.CDLL("./libseccomp_injector_python.so")
-result = libseccomp.inject_seccomp_profile(uid, gid)
-if not result:
+try:
+    libseccomp = ctypes.CDLL("./libseccomp_injector_python.so")
+    result = libseccomp.inject_seccomp_profile(int(uid), int(gid))
+    if not result:
+        print("Error: Failed to inject seccomp profile", file=sys.stderr)
+        exit(-1)
+except Exception as e:
+    print(f"Error: Failed to load seccomp library: {e}", file=sys.stderr)
     exit(-1)
 
-exec(user_code)
+try:
+    exec(user_code)
+except Exception as e:
+    print(f"Error during code execution: {e}", file=sys.stderr)
+    exit(-1)
