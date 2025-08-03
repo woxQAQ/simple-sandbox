@@ -25,25 +25,18 @@ class NodeJSRuntime(LanguageRuntime):
         return [".js", ".mjs", ".cjs"]
 
     def preprocess_code(self, code: str) -> str:
-        """预处理Node.js代码，使用插件系统处理所有增强功能"""
+        """预处理Node.js代码（已移除transformer功能）"""
         if runtime_config.debug_mode:
             logger.debug(f"开始预处理Node.js代码 - 代码长度: {len(code)}")
+        
+        # 直接返回原始代码，不再使用AST转换
         processed_code = code
-
-        # 使用AST插件系统转换代码
-        try:
-            context = {"language": "nodejs", "security_warnings": True}
-            processed_code = nodejs_ast_manager.transform_code(
-                processed_code, context
+        
+        if runtime_config.debug_mode:
+            logger.debug(
+                f"Node.js代码预处理完成 - 长度: {len(processed_code)}"
             )
-            if runtime_config.debug_mode:
-                logger.debug(
-                    f"Node.js代码预处理完成 - 转换后长度: {len(processed_code)}"
-                )
-        except Exception as e:
-            # 如果AST转换失败，继续使用原始代码
-            logger.warning(f"AST转换失败，使用原始代码: {e}")
-
+        
         return processed_code
 
     def get_command(self, filename: str = None) -> List[str]:
@@ -58,15 +51,15 @@ class NodeJSRuntime(LanguageRuntime):
                 logger.debug("开始设置Node.js seccomp安全限制")
 
             # 使用安全管理器设置seccomp过滤器
-            # 在开发环境中使用构建输出目录
+            # 在新的沙盒目录中，seccomp库位于当前目录
             if os.path.exists("/var/sandbox"):
-                actual_lib_dir = "/var/sandbox"
                 # 在Docker容器环境中启用seccomp
+                # 库路径设置为当前目录，因为seccomp库已经复制到沙盒目录
                 create_secure_process(
                     language="nodejs",
                     uid=runtime_config.sandbox_uid,
                     gid=runtime_config.sandbox_gid,
-                    library_dir=actual_lib_dir,
+                    library_dir=".",  # 使用当前目录
                 )
             else:
                 # 开发环境中跳过seccomp设置
@@ -100,10 +93,10 @@ class NodeJSRuntime(LanguageRuntime):
             execution_time = time.time() - start_time
             return RuntimeUtils.create_preprocess_error(e, execution_time)
 
-        # 使用上下文管理器创建临时沙盒目录
-        with temporary_sandbox_dir() as sandbox_dir:
+        # 使用新的Node.js沙盒目录管理器
+        with RuntimeUtils.nodejs_sandbox_dir() as sandbox_dir:
             if runtime_config.debug_mode:
-                logger.debug(f"创建Node.js临时沙盒目录: {sandbox_dir}")
+                logger.debug(f"使用Node.js沙盒目录: {sandbox_dir}")
 
             try:
                 # 使用公共工具加密代码
@@ -111,8 +104,8 @@ class NodeJSRuntime(LanguageRuntime):
                     processed_code
                 )
 
-                # 获取seccomp库路径
-                seccomp_lib_path = RuntimeUtils.get_seccomp_lib_path("nodejs")
+                # 获取seccomp库路径（在沙盒目录中）
+                seccomp_lib_path = os.path.join(sandbox_dir, "libseccomp_injector_nodejs.so")
 
                 # 创建entrypoint文件
                 entrypoint_path = RuntimeUtils.create_entrypoint_file(

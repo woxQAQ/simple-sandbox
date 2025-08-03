@@ -54,12 +54,17 @@ class TestExtensionIntegration:
         """测试Node.js扩展集成"""
         from src.runtime.nodejs.extensions import (
             nodejs_ast_manager,
-            nodejs_ast_registry,
         )
 
-        # 测试全局管理器和注册表存在
+        # 测试全局管理器存在（Node.js已移除registry）
         assert nodejs_ast_manager is not None
-        assert nodejs_ast_registry is not None
+        
+        # 测试Node.js AST管理器功能
+        test_code = "console.log('Hello, World!');"
+        result = nodejs_ast_manager.transform_code(test_code)
+        
+        # 由于Node.js transformer已移除，应该返回原始代码
+        assert result == test_code
 
     def test_extension_error_handling(self):
         """测试扩展错误处理"""
@@ -147,24 +152,15 @@ class TestExtensionIntegration:
             assert manager is not None
 
     def test_extension_nodejs_transformation(self):
-        """测试Node.js转换"""
-        with patch("os.path.join") as mock_join:
-            mock_join.return_value = "/fake/path/transformer.js"
+        """测试Node.js转换（已移除transformer功能）"""
+        # 由于Node.js transformer已被移除，现在直接返回原始代码
+        manager = NodeJSASTManager()
+        result = manager.transform_code(
+            "original_code", {"key": "value"}
+        )
 
-            with patch("subprocess.run") as mock_run:
-                mock_result = Mock()
-                mock_result.returncode = 0
-                mock_result.stdout = (
-                    '{"success": true, "transformed": "transformed_code"}'
-                )
-                mock_run.return_value = mock_result
-
-                manager = NodeJSASTManager()
-                result = manager.transform_code(
-                    "original_code", {"key": "value"}
-                )
-
-                assert result == "transformed_code"
+        # 应该返回原始代码，不再进行转换
+        assert result == "original_code"
 
     def test_extension_cross_language_compatibility(self):
         """测试跨语言兼容性"""

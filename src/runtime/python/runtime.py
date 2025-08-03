@@ -61,13 +61,49 @@ class PythonRuntime(LanguageRuntime):
                     f"当前进程权限 - UID: {current_uid}, GID: {current_gid}"
                 )
 
-            # 设置环境变量限制文件系统访问
-            os.environ["PYTHONPATH"] = sandbox_dir
-            os.environ["HOME"] = sandbox_dir
-            os.environ["TMPDIR"] = sandbox_dir
+            # 检查是否为root用户且目标目录是/var/sandbox/python
+            if current_uid == 0 and sandbox_dir == "/var/sandbox/python":
+                # 确保目标目录存在
+                if not os.path.exists(sandbox_dir):
+                    if runtime_config.debug_mode:
+                        logger.debug(f"目标目录不存在，跳过chroot: {sandbox_dir}")
+                    # 回退到常规文件系统隔离
+                    use_chroot = False
+                else:
+                    use_chroot = True
+            else:
+                use_chroot = False
+            
+            if use_chroot:
+                # 设置chroot环境
+                if runtime_config.debug_mode:
+                    logger.debug(f"设置chroot到: {sandbox_dir}")
+                
+                # 首先切换到沙盒目录
+                os.chdir(sandbox_dir)
+                
+                # 执行chroot
+                os.chroot(sandbox_dir)
+                
+                # chroot后，当前目录变为根目录，需要切换到tmp目录
+                os.chdir("/tmp")
+                
+                # 设置环境变量（chroot后的路径）
+                os.environ["PYTHONPATH"] = "/tmp"
+                os.environ["HOME"] = "/tmp"
+                os.environ["TMPDIR"] = "/tmp"
+                
+                if runtime_config.debug_mode:
+                    logger.debug(f"chroot设置完成，当前目录: {os.getcwd()}")
+            else:
+                # 非root用户或非chroot环境，使用常规文件系统隔离
+                # 设置环境变量限制文件系统访问
+                os.environ["PYTHONPATH"] = sandbox_dir
+                os.environ["HOME"] = sandbox_dir
+                os.environ["TMPDIR"] = sandbox_dir
 
-            # 限制当前目录到沙盒目录
-            os.chdir(sandbox_dir)
+                # 限制当前目录到沙盒目录
+                os.chdir(sandbox_dir)
 
             # 设置权限
             if current_uid == 0:
@@ -132,12 +168,22 @@ class PythonRuntime(LanguageRuntime):
                         inject_seccomp_for_language_with_chroot,
                     )
 
+                    # 检查是否在chroot环境下
+                    if sandbox_dir == "/var/sandbox/python" and os.path.exists(sandbox_dir):
+                        # 在chroot环境下，库路径需要调整
+                        # chroot后，外部库路径变为相对路径
+                        library_path = "."  # chroot后的当前目录
+                        chroot_dir = None  # 已经在文件系统隔离中设置了chroot
+                    else:
+                        library_path = actual_lib_dir
+                        chroot_dir = sandbox_dir
+
                     inject_seccomp_for_language_with_chroot(
                         language="python",
                         uid=runtime_config.sandbox_uid,
                         gid=runtime_config.sandbox_gid,
-                        chroot_dir=sandbox_dir,
-                        library_path=actual_lib_dir,
+                        chroot_dir=chroot_dir,
+                        library_path=library_path,
                     )
                     if runtime_config.debug_mode:
                         logger.debug("seccomp安全限制设置成功")
@@ -190,91 +236,104 @@ class PythonRuntime(LanguageRuntime):
             execution_time = time.time() - start_time
             return RuntimeUtils.create_preprocess_error(e, execution_time)
 
-        # 使用上下文管理器创建临时沙盒目录
-        with temporary_sandbox_dir() as sandbox_dir:
+        # 使用固定的Python沙盒目录
+        python_sandbox_dir = "/var/sandbox/python"
+        
+        # 检查是否有权限访问/var/sandbox目录
+        try:
+            # 确保tmp目录存在
+            os.makedirs("/var/sandbox/python/tmp", exist_ok=True)
+        except PermissionError:
+            # 在开发环境中，如果没有权限，使用临时目录
+            import tempfile
+            python_sandbox_dir = tempfile.mkdtemp(prefix="sandbox-python-")
+            os.makedirs(os.path.join(python_sandbox_dir, "tmp"), exist_ok=True)
+            
             if runtime_config.debug_mode:
-                logger.debug(f"创建临时沙盒目录: {sandbox_dir}")
+                logger.debug(f"开发环境中使用临时目录: {python_sandbox_dir}")
+        
+        if runtime_config.debug_mode:
+            logger.debug(f"使用Python沙盒目录: {python_sandbox_dir}")
 
-            try:
-                # 使用公共工具加密代码
-                encrypted_code, encryption_key = RuntimeUtils.encrypt_code(
-                    processed_code
-                )
+        try:
+            # 使用公共工具加密代码
+            encrypted_code, encryption_key = RuntimeUtils.encrypt_code(
+                processed_code
+            )
 
-                # 获取seccomp库路径
-                seccomp_lib_path = RuntimeUtils.get_seccomp_lib_path("python")
+            # 获取seccomp库路径
+            seccomp_lib_path = RuntimeUtils.get_seccomp_lib_path("python")
 
-                # 创建entrypoint文件
-                entrypoint_path = RuntimeUtils.create_entrypoint_file(
-                    sandbox_dir,
-                    "python",
-                    encrypted_code,
-                    encryption_key,
-                    seccomp_lib_path,
-                )
+            # 创建entrypoint文件
+            entrypoint_path = RuntimeUtils.create_python_entrypoint_file(
+                encrypted_code,
+                encryption_key,
+                seccomp_lib_path,
+                python_sandbox_dir,
+            )
 
-                # 构建执行命令
-                command = [
-                    runtime_config.get_python_command(),
-                    entrypoint_path,
-                    encryption_key,
-                ]
+            # 构建执行命令
+            command = [
+                runtime_config.get_python_command(),
+                entrypoint_path,
+                encryption_key,
+            ]
 
-                # 设置进程环境变量
-                process_env = RuntimeUtils.setup_process_environment()
+            # 设置进程环境变量
+            process_env = RuntimeUtils.setup_process_environment()
 
-                # 执行进程，在preexecfn中设置安全限制
-                def setup_security():
-                    # 首先设置文件系统隔离
-                    self._setup_filesystem_isolation(sandbox_dir)
-                    # 然后设置seccomp安全限制
-                    self._setup_seccomp_security(sandbox_dir)
+            # 执行进程，在preexecfn中设置安全限制
+            def setup_security():
+                # 首先设置文件系统隔离
+                self._setup_filesystem_isolation(python_sandbox_dir)
+                # 然后设置seccomp安全限制
+                self._setup_seccomp_security(python_sandbox_dir)
 
-                process = subprocess.Popen(  # nosec B603
-                    command,
-                    stdin=subprocess.PIPE if input_data else None,
-                    stdout=subprocess.PIPE,
-                    stderr=subprocess.PIPE,
-                    env=process_env,
-                    text=True,
-                    cwd=sandbox_dir,
-                    preexec_fn=setup_security,
-                )
+            process = subprocess.Popen(  # nosec B603
+                command,
+                stdin=subprocess.PIPE if input_data else None,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                env=process_env,
+                text=True,
+                cwd=python_sandbox_dir,
+                preexec_fn=setup_security,
+            )
 
-                stdout, stderr = process.communicate(
-                    input=input_data if input_data else None,
-                    timeout=runtime_config.code_execution_timeout,
-                )
+            stdout, stderr = process.communicate(
+                input=input_data if input_data else None,
+                timeout=runtime_config.code_execution_timeout,
+            )
 
-                execution_time = time.time() - start_time
+            execution_time = time.time() - start_time
 
-                # 创建执行结果
-                result = ExecutionResult(
-                    status=(
-                        ExecutionStatus.SUCCESS
-                        if process.returncode == 0
-                        else ExecutionStatus.ERROR
-                    ),
-                    stdout=stdout or "",
-                    stderr=stderr or "",
-                    execution_time=execution_time,
-                    exit_code=process.returncode,
-                    error_message=stderr if process.returncode != 0 else None,
-                )
+            # 创建执行结果
+            result = ExecutionResult(
+                status=(
+                    ExecutionStatus.SUCCESS
+                    if process.returncode == 0
+                    else ExecutionStatus.ERROR
+                ),
+                stdout=stdout or "",
+                stderr=stderr or "",
+                execution_time=execution_time,
+                exit_code=process.returncode,
+                error_message=stderr if process.returncode != 0 else None,
+            )
 
-                # 记录执行结果日志
-                RuntimeUtils.log_execution_result(
-                    "Python", result, execution_time
-                )
+            # 记录执行结果日志
+            RuntimeUtils.log_execution_result(
+                "Python", result, execution_time
+            )
 
-                return result
+            return result
 
-            except subprocess.TimeoutExpired:
-                execution_time = time.time() - start_time
-                return RuntimeUtils.create_timeout_error(execution_time)
+        except subprocess.TimeoutExpired:
+            execution_time = time.time() - start_time
+            return RuntimeUtils.create_timeout_error(execution_time)
 
-            except Exception as e:
-                execution_time = time.time() - start_time
-                return RuntimeUtils.create_execution_error(
-                    "执行异常", str(e), execution_time
-                )
+        except Exception as e:
+            execution_time = time.time() - start_time
+            return RuntimeUtils.create_execution_error(
+                "执行异常", str(e), execution_time
+            )

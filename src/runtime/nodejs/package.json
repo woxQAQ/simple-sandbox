@@ -1,6 +1,0 @@
-{
-  "type": "module",
-  "dependencies": {
-    "acorn": "^8.15.0"
-  }
-}

@@ -34,8 +34,7 @@ COPY main.py ./
 # Build seccomp components (same as main Dockerfile)
 RUN chmod +x ./scripts/build.sh && ./scripts/build.sh
 
-# Install Node.js transformer dependencies
-RUN cd src/runtime/nodejs && npm install
+# Node.js transformer dependencies removed
 
 # Create sandbox directories and copy seccomp libraries
 RUN mkdir -p /var/sandbox/python /var/sandbox/nodejs && \

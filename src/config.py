@@ -38,13 +38,11 @@ class RuntimeConfig:
         self.python_runtime_dir = self.runtime_dir / "python"
         self.nodejs_runtime_dir = self.runtime_dir / "nodejs"
 
-        # Transformer路径
+        # Transformer路径（仅Python支持transformer）
         self.python_transformer_path = (
             self.python_runtime_dir / "transformer.py"
         )
-        self.nodejs_transformer_path = (
-            self.nodejs_runtime_dir / "transformer.js"
-        )
+        # Node.js不再支持transformer
 
         # 插件路径
         self.python_plugins_dir = self.python_runtime_dir / "plugins"
@@ -84,9 +82,7 @@ class RuntimeConfig:
         self.python_transformer_path = (
             self.python_runtime_dir / "transformer.py"
         )
-        self.nodejs_transformer_path = (
-            self.nodejs_runtime_dir / "transformer.js"
-        )
+        # Node.js不再支持transformer
         self.python_plugins_dir = self.python_runtime_dir / "plugins"
         self.nodejs_plugins_dir = self.nodejs_runtime_dir / "plugins"
 
@@ -117,10 +113,7 @@ class RuntimeConfig:
         """获取Python transformer命令"""
         return [self.get_python_command(), str(self.python_transformer_path)]
 
-    def get_nodejs_transformer_command(self) -> list:
-        """获取Node.js transformer命令"""
-        return [self.get_nodejs_command(), str(self.nodejs_transformer_path)]
-
+    
     def to_dict(self) -> Dict[str, Any]:
         """转换为字典"""
         return {
@@ -129,7 +122,7 @@ class RuntimeConfig:
             "python_runtime_dir": str(self.python_runtime_dir),
             "nodejs_runtime_dir": str(self.nodejs_runtime_dir),
             "python_transformer_path": str(self.python_transformer_path),
-            "nodejs_transformer_path": str(self.nodejs_transformer_path),
+            # Node.js不再支持transformer
             "python_plugins_dir": str(self.python_plugins_dir),
             "nodejs_plugins_dir": str(self.nodejs_plugins_dir),
             "python_security_lib_dir": self.python_security_lib_dir,

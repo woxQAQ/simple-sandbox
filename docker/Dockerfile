@@ -54,15 +54,7 @@ COPY main.py ./
 # Build seccomp components
 RUN chmod +x ./scripts/build.sh && ./scripts/build.sh
 
-# Configure NPM mirror for Node.js transformer dependencies
-ARG NPM_MIRROR=""
-RUN if [ -n "$NPM_MIRROR" ]; then \
-    echo "Using NPM mirror: $NPM_MIRROR"; \
-    npm config set registry "$NPM_MIRROR"; \
-    fi
-
-# Install Node.js transformer dependencies
-RUN cd src/runtime/nodejs && npm install
+# Node.js transformer dependencies removed
 
 # Final stage - runtime image
 FROM --platform=$TARGETPLATFORM python:3.11-slim
@@ -101,7 +93,7 @@ COPY --from=builder /app/scripts ./scripts
 COPY --from=builder /app/main.py ./main.py
 COPY pyproject.toml ./
 COPY --from=builder /usr/local/lib/python3.11/site-packages /usr/local/lib/python3.11/site-packages
-COPY --from=builder /app/src/runtime/nodejs/node_modules ./src/runtime/nodejs/node_modules
+# Node.js transformer dependencies removed
 
 # Copy seccomp libraries to language-specific directories
 RUN mkdir -p /var/sandbox/python /var/sandbox/nodejs && \
