@@ -63,7 +63,7 @@ class PythonASTTransformer(ast.NodeTransformer):
     def __init__(self, plugins: List[PythonASTPlugin]):
         self.plugins = sorted(plugins, key=lambda p: p.priority)
 
-    def transform(self, code: str, context: PythonASTContext = None) -> str:
+    def transform(self, code: str, context: PythonASTContext) -> str:
         """转换代码"""
         try:
             tree = ast.parse(code)

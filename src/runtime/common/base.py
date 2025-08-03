@@ -19,20 +19,11 @@ class LanguageRuntime(ABC):
         self,
         code: str,
         input_data: str = "",
-        env_vars: Dict[str, str] | None = None,
+        env_vars: dict[str, str] = {},
     ) -> ExecutionResult:
         """执行给定的代码"""
-        pass
-
-    @abstractmethod
-    def get_supported_extensions(self) -> List[str]:
-        """返回支持的文件扩展名列表"""
         pass
 
     def preprocess_code(self, code: str) -> str:
         """预处理代码（用于特殊处理，如matplotlib）"""
         return code
-
-    def get_command(self, filename: str) -> List[str]:
-        """获取执行命令"""
-        raise NotImplementedError
