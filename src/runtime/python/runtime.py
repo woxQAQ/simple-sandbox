@@ -65,7 +65,7 @@ class PythonRuntime(LanguageRuntime):
             processed_code
         )
         entrypoint_content = self._render_entrypoint(
-            encrypted_code.decode(),
+            encrypted_code,
         )
 
         tmp_dir = f"{python_sandbox_dir}/tmp"
