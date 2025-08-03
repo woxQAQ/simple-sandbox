@@ -33,7 +33,6 @@ def decrypt_code(code_b64, key):
     return code.decode('utf-8')
 
 
-os.environ["SECCOMP_VERBOSE"] = '1'
 user_code = decrypt_code("{{code}}", key_b64)  # noqa
 
 try:
