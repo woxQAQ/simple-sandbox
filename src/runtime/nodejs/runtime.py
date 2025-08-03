@@ -30,10 +30,9 @@ class NodeJSRuntime(LanguageRuntime):
 
     def _render_entrypoint(self, enc_code: str) -> str:
         content = ""
-        with open("./entrypoint.js", "w") as f:
+        with open("./src/runtime/nodejs/entrypoint.js", "w") as f:
             content = f.read()
-            content.replace("{{ code }}", enc_code)
-        return content
+            return content.replace("{{ code }}", enc_code)
 
     def execute(
         self,
@@ -54,7 +53,7 @@ class NodeJSRuntime(LanguageRuntime):
                 processed_code
             )
 
-            _code = self._render_entrypoint(encrypted_code)
+            _code = self._render_entrypoint(encrypted_code.decode())
 
             entrypoint_path = f"{sandbox_dir} / entrypoint.js"
             # 创建entrypoint文件

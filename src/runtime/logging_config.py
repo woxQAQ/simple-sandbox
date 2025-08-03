@@ -52,7 +52,8 @@ def _get_handlers(log_file: Optional[str] = None) -> list:
     console_handler = logging.StreamHandler(sys.stdout)
     console_handler.setLevel(logging.INFO)  # 控制台只显示INFO及以上
     console_formatter = logging.Formatter(
-        "%(asctime)s - %(levelname)s - %(message)s"
+        fmt="%(asctime)s [%(levelname)s] %(pathname)s:%(lineno)d - %(message)s",
+        datefmt="%Y-%m-%d %H:%M:%S",
     )
     console_handler.setFormatter(console_formatter)
     handlers.append(console_handler)

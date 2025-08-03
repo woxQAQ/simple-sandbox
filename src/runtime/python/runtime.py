@@ -41,10 +41,9 @@ class PythonRuntime(LanguageRuntime):
 
     def _render_entrypoint(self, enc_code: str) -> str:
         content = ""
-        with open("./entrypoint.py", "w") as f:
+        with open("./src/runtime/python/entrypoint.py", "w") as f:
             content = f.read()
-            content.replace("{{code}}", enc_code)
-        return content
+            return content.replace("{{code}}", enc_code)
 
     def execute(
         self,
