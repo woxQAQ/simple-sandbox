@@ -67,7 +67,10 @@ class PythonRuntime(LanguageRuntime):
             encrypted_code.decode(),
         )
 
-        entrypoint_path = f"{python_sandbox_dir}/tmp/{uuid.uuid4()}.py"
+        import os
+        tmp_dir = f"{python_sandbox_dir}/tmp"
+        os.makedirs(tmp_dir, exist_ok=True)
+        entrypoint_path = f"{tmp_dir}/{uuid.uuid4()}.py"
 
         with open(entrypoint_path, "w") as f:
             f.write(entrypoint_content)
