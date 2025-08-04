@@ -49,16 +49,16 @@ class NodeJSRuntimeUtils:
     @staticmethod
     def _copy_nodejs_sandbox_files(sandbox_dir: str):
         """
-        复制Node.js沙盒所需的文件
+        复制Node.js沙盒所需的文件和目录
 
         Args:
             sandbox_dir: 目标沙盒目录
         """
-        # 需要复制的文件列表
-        files_to_copy = [
+        # 需要复制的文件和目录列表
+        items_to_copy = [
             # 安全库
             "/var/sandbox/nodejs/libseccomp_injector_nodejs.so",
-            "/var/sandbox/nodejs/runtime"
+            "/var/sandbox/nodejs/runtime",
             # 网络相关文件
             "/etc/ssl/certs/ca-certificates.crt",
             "/etc/nsswitch.conf",
@@ -66,31 +66,42 @@ class NodeJSRuntimeUtils:
             "/etc/hosts",
         ]
 
-        for src_file in files_to_copy:
-            if os.path.exists(src_file):
-                # 计算目标路径
-                if src_file.startswith("/var/sandbox/nodejs/"):
-                    # 安全库放在沙盒根目录
-                    dst_file = os.path.join(
-                        sandbox_dir, os.path.basename(src_file)
-                    )
-                else:
-                    # 其他文件保持原路径结构
-                    rel_path = os.path.relpath(src_file, "/")
-                    dst_file = os.path.join(sandbox_dir, rel_path)
-                    dst_dir = os.path.dirname(dst_file)
-                    os.makedirs(dst_dir, exist_ok=True)
+        for src_item in items_to_copy:
+            if not os.path.exists(src_item):
+                logger.debug(f"源路径不存在，跳过: {src_item}")
+                continue
 
-                try:
-                    # 使用硬链接而不是复制，减少磁盘I/O
-                    if os.path.exists(dst_file):
-                        os.remove(dst_file)
-                    os.link(src_file, dst_file)
-
-                    logger.debug(f"链接文件: {src_file} -> {dst_file}")
-                except OSError:
-                    # 如果硬链接失败，使用复制
-                    shutil.copy2(src_file, dst_file)
-                    logger.debug(f"复制文件: {src_file} -> {dst_file}")
+            # 计算目标路径
+            if src_item.startswith("/var/sandbox/nodejs/"):
+                # 安全库放在沙盒根目录
+                dst_item = os.path.join(sandbox_dir, os.path.basename(src_item))
             else:
-                logger.debug(f"源文件不存在，跳过: {src_file}")
+                # 其他文件保持原路径结构
+                rel_path = os.path.relpath(src_item, "/")
+                dst_item = os.path.join(sandbox_dir, rel_path)
+
+            # 确保目标目录存在
+            dst_dir = os.path.dirname(dst_item)
+            os.makedirs(dst_dir, exist_ok=True)
+
+            try:
+                if os.path.isdir(src_item):
+                    # 复制整个目录
+                    if os.path.exists(dst_item):
+                        shutil.rmtree(dst_item)
+                    shutil.copytree(src_item, dst_item, symlinks=False)
+                    logger.debug(f"复制目录: {src_item} -> {dst_item}")
+                else:
+                    # 复制文件
+                    if os.path.exists(dst_item):
+                        os.remove(dst_item)
+                    # 先尝试硬链接
+                    try:
+                        os.link(src_item, dst_item)
+                        logger.debug(f"链接文件: {src_item} -> {dst_item}")
+                    except OSError:
+                        # 如果硬链接失败，使用复制
+                        shutil.copy2(src_item, dst_item)
+                        logger.debug(f"复制文件: {src_item} -> {dst_item}")
+            except Exception as e:
+                logger.debug(f"复制 {src_item} 失败: {e}")
