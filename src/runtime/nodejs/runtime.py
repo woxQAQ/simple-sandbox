@@ -53,7 +53,7 @@ class NodeJSRuntime(LanguageRuntime):
                 processed_code
             )
 
-            _code = self._render_entrypoint(encrypted_code.decode())
+            _code = self._render_entrypoint(encrypted_code)
 
             entrypoint_path = f"{sandbox_dir} / entrypoint.js"
             # 创建entrypoint文件
