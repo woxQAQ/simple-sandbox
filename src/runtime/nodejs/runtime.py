@@ -55,9 +55,9 @@ class NodeJSRuntime(LanguageRuntime):
 
             _code = self._render_entrypoint(encrypted_code)
 
-            entrypoint_path = f"{sandbox_dir} / entrypoint.js"
+            entrypoint_path = f"{sandbox_dir}/entrypoint.js"
             # 创建entrypoint文件
-            with open(entrypoint_path) as f:
+            with open(entrypoint_path, 'w') as f:
                 f.write(_code)
 
             # 构建执行命令
