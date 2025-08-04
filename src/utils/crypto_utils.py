@@ -25,7 +25,7 @@ class CryptoUtils:
     def encrypt_code(code: str):
         """使用简单加密方法加密代码"""
         # 生成密钥
-        key_b64 = CryptoUtils.generate_encryption_key(64)
+        key_b64 = CryptoUtils.generate_encryption_key(32)
         # 解码密钥为字节
         key_bytes = base64.b64decode(key_b64)
         # 使用XOR加密

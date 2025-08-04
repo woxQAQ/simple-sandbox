@@ -11,9 +11,14 @@ const decryptCode = (code, key) => {
     decrypted[i] = encrypted[i] ^ keyBytes[i % keyBytes.length];
   }
 
-  // 移除可能的空字节和无效字符
-  const cleaned = decrypted.toString('utf8').replace(/\0/g, '').trim();
-  return cleaned;
+  // 找到实际的字符串结束位置（去除末尾的填充字节）
+  let endPos = encrypted.length;
+  while (endPos > 0 && decrypted[endPos - 1] === 0) {
+    endPos--;
+  }
+
+  // 转换为UTF-8字符串
+  return decrypted.slice(0, endPos).toString('utf8');
 }
 
 const argv = process.argv

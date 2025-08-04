@@ -5,12 +5,25 @@
 
 ## code styles
 
-There are several code styles you MUST obey:
+### overall
 
 - if you add comments, explain WHY you code the following logic instead of WHAT the following logic is.
 - reduce comments, a better function name is better than writing extend comment to explain the function
 - coding python with PEP 8 style guidelines.
 - AVOID using UNNECESSARY design pattern if you are doing anything that is easy.
+- Keep functions focused and single-purpose
+
+### best practices
+
+- Use docstrings for modules, classes, and functions
+- Use list comprehensions for simple transformations
+- Prefer pathlib over os.path for file operations
+- Use context managers (with statements) for resource management
+- Use logging module instead of print statements
+
+### type hint
+
+- Document complex types with comments
 
 ## mcp servers
 
