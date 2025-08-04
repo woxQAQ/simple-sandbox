@@ -54,7 +54,7 @@ COPY main.py ./
 # Build seccomp components
 RUN chmod +x ./scripts/build.sh && ./scripts/build.sh
 
-# Node.js transformer dependencies removed
+RUN cd src/runtime/nodejs/node_runtime && npm install
 
 # Final stage - runtime image
 FROM --platform=$TARGETPLATFORM python:3.11-slim
@@ -96,9 +96,11 @@ COPY --from=builder /usr/local/lib/python3.11/site-packages /usr/local/lib/pytho
 # Node.js transformer dependencies removed
 
 # Copy seccomp libraries to language-specific directories
-RUN mkdir -p /var/sandbox/python /var/sandbox/nodejs && \
+RUN mkdir -p /var/sandbox/python /var/sandbox/nodejs/runtime/ && \
     cp /app/build/lib/libseccomp_injector_python.so /var/sandbox/python/ && \
     cp /app/build/lib/libseccomp_injector_nodejs.so /var/sandbox/nodejs/
+
+COPY /app/src/runtime/nodejs/node_runtime /var/sandbox/nodejs/runtime
 
 # Set environment variables
 ENV PYTHONPATH=/app
