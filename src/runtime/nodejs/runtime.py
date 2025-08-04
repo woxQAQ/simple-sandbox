@@ -61,6 +61,22 @@ class NodeJSRuntime(LanguageRuntime):
             with open(entrypoint_path, "w", encoding="utf-8") as f:
                 f.write(_code)
 
+            # 调试：检查写入的文件内容
+            logger.debug(f"Entrypoint file written to: {entrypoint_path}")
+            logger.debug(f"Entrypoint file size: {len(_code)} bytes")
+            logger.debug(f"Encrypted code length: {len(encrypted_code)} bytes")
+
+            # 检查文件是否正确写入
+            with open(entrypoint_path, "r", encoding="utf-8") as f:
+                written_content = f.read()
+                logger.debug(
+                    f"Written file content length: {len(written_content)} bytes"
+                )
+                logger.debug(f"Content matches: {written_content == _code}")
+                logger.debug(
+                    f"Contains encrypted code: {encrypted_code in written_content}"
+                )
+
             # 构建执行命令
             command = [
                 runtime_config.get_nodejs_command(),
