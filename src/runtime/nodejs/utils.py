@@ -61,7 +61,7 @@ class NodeJSRuntimeUtils:
         files_to_copy = [
             # 安全库
             "/var/sandbox/nodejs/libseccomp_injector_nodejs.so",
-            "/var/sandbox/nodejs/node_runtime"
+            "/var/sandbox/nodejs/runtime"
             # 网络相关文件
             "/etc/ssl/certs/ca-certificates.crt",
             "/etc/nsswitch.conf",
