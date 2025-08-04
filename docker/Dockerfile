@@ -100,7 +100,7 @@ RUN mkdir -p /var/sandbox/python /var/sandbox/nodejs/runtime/ && \
     cp /app/build/lib/libseccomp_injector_python.so /var/sandbox/python/ && \
     cp /app/build/lib/libseccomp_injector_nodejs.so /var/sandbox/nodejs/
 
-COPY /app/src/runtime/nodejs/node_runtime /var/sandbox/nodejs/runtime
+COPY --from=builder /app/src/runtime/nodejs/node_runtime /var/sandbox/nodejs/runtime
 
 # Set environment variables
 ENV PYTHONPATH=/app
