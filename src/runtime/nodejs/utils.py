@@ -84,6 +84,11 @@ class NodeJSRuntimeUtils:
             dst_dir = os.path.dirname(dst_item)
             os.makedirs(dst_dir, exist_ok=True)
 
+            # 添加调试信息
+            logger.debug(f"复制项目: {src_item} -> {dst_item}")
+            if os.path.isdir(src_item):
+                logger.debug(f"源是目录，包含内容: {os.listdir(src_item)[:5]}")
+
             try:
                 if os.path.isdir(src_item):
                     # 复制整个目录

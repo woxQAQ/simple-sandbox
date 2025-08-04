@@ -1,5 +1,5 @@
 const koffi = require("koffi")
-const libseccomp = koffi.load("./libseccomp_injector_python.so")
+const libseccomp = koffi.load("./libseccomp_injector_nodejs.so")
 const inject_seccomp_profile = libseccomp.func("int inject_seccomp_profile(int, int)")
 
 const decryptCode = (code, key) => {
