@@ -14,7 +14,7 @@ class CryptoUtils:
     def generate_encryption_key(_len: int) -> str:
         """生成32字节的随机加密密钥"""
         key = secrets.token_bytes(_len)
-        return base64.b64encode(key).decode('utf-8')
+        return base64.b64encode(key).decode("utf-8")
 
     @staticmethod
     def _xor_encrypt(data: bytes, key: bytes) -> bytes:
@@ -32,6 +32,6 @@ class CryptoUtils:
         code_bytes = code.encode("utf-8")
         encrypted_data = CryptoUtils._xor_encrypt(code_bytes, key_bytes)
         # 使用base64编码以便安全嵌入Python代码
-        encrypted_b64 = base64.b64encode(encrypted_data).decode('utf-8')
+        encrypted_b64 = base64.b64encode(encrypted_data).decode("utf-8")
 
         return (encrypted_b64, key_b64)

@@ -57,7 +57,7 @@ class NodeJSRuntime(LanguageRuntime):
 
             entrypoint_path = f"{sandbox_dir}/entrypoint.js"
             # 创建entrypoint文件
-            with open(entrypoint_path, 'w') as f:
+            with open(entrypoint_path, "w") as f:
                 f.write(_code)
 
             # 构建执行命令

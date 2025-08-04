@@ -30,7 +30,7 @@ def decrypt_code(code_b64, key):
     for i in range(code_len):
         code[i] ^= key_bytes[i % key_len]
     # 解码为UTF-8字符串
-    return code.decode('utf-8')
+    return code.decode("utf-8")
 
 
 user_code = decrypt_code("{{code}}", key_b64)  # noqa
