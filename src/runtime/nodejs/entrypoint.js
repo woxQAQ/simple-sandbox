@@ -7,21 +7,18 @@ const decryptCode = (code, key) => {
   const encrypted = Buffer.from(code, 'base64');
   const keyBytes = Buffer.from(key, 'base64');
 
-  // 使用bytearray类似的方式处理
-  const codeArray = new Uint8Array(encrypted);
-  const keyLen = keyBytes.length;
-
   // XOR解密，与Python实现保持一致
-  for (let i = 0; i < codeArray.length; i++) {
-    codeArray[i] ^= keyBytes[i % keyLen];
+  const decrypted = Buffer.alloc(encrypted.length);
+  for (let i = 0; i < encrypted.length; i++) {
+    decrypted[i] = encrypted[i] ^ keyBytes[i % keyBytes.length];
   }
 
   // 解码为UTF-8字符串，与Python实现保持一致
-  return Buffer.from(codeArray).toString('utf8');
+  return decrypted.toString('utf8');
 }
 
 const argv = process.argv
 
-const code = decryptCode('{{ code }}', argv[3])
-inject_seccomp_profile(parseInt(argv[4]), parseInt(argv[5]))
+const code = decryptCode('{{ code }}', argv[2])
+inject_seccomp_profile(parseInt(argv[3]), parseInt(argv[4]))
 eval(code)
