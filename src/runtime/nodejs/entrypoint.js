@@ -18,5 +18,6 @@ const decryptCode = (code, key) => {
 const argv = process.argv
 
 const code = decryptCode('{{ code }}', argv[3])
+console.log(code)
 inject_seccomp_profile(parseInt(argv[4]), parseInt(argv[5]))
 eval(code)
