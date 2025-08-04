@@ -57,8 +57,8 @@ class NodeJSRuntime(LanguageRuntime):
             _code = self._render_entrypoint(encrypted_code)
 
             entrypoint_path = f"{sandbox_dir}/runtime/entrypoint.js"
-            # 创建entrypoint文件
-            with open(entrypoint_path, "w") as f:
+            # 创建entrypoint文件，明确指定UTF-8编码
+            with open(entrypoint_path, "w", encoding="utf-8") as f:
                 f.write(_code)
 
             # 构建执行命令
