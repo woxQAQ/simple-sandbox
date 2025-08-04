@@ -6,6 +6,7 @@ dist/
 !src/runtime/extensions/transformer/nodejs/node_modules/acorn/dist
 wheels/
 *.egg-info
+.python-version
 
 # Virtual environments
 .venv
