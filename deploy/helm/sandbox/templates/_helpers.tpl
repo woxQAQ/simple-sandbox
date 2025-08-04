@@ -63,9 +63,9 @@ Environment variables for the sandbox application
 {{- end }}
 
 {{/*
-Network policy rules
+Network policy ingress rules
 */}}
-{{- define "sandbox.networkPolicyRules" -}}
+{{- define "sandbox.networkPolicyIngressRules" -}}
 # Allow traffic from same namespace
 - from:
     - namespaceSelector:
@@ -75,6 +75,12 @@ Network policy rules
 - ports:
     - protocol: TCP
       port: {{ .Values.service.port }}
+{{- end }}
+
+{{/*
+Network policy egress rules
+*/}}
+{{- define "sandbox.networkPolicyEgressRules" -}}
 # Allow DNS traffic
 - to: []
   ports:

@@ -11,6 +11,7 @@ pkgs.mkShell {
     python311
     zsh
     allure
+    kubernetes-helm
   ];
   shellHook = # sh
     ''

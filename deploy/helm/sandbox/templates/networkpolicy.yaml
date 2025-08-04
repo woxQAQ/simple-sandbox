@@ -13,7 +13,7 @@ spec:
     - Ingress
     - Egress
   ingress:
-    {{- include "sandbox.networkPolicyRules" . | nindent 4 }}
+    {{- include "sandbox.networkPolicyIngressRules" . | nindent 4 }}
   egress:
-    {{- include "sandbox.networkPolicyRules" . | nindent 4 }}
+    {{- include "sandbox.networkPolicyEgressRules" . | nindent 4 }}
 {{- end }}
