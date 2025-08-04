@@ -65,8 +65,8 @@ class NodeJSRuntime(LanguageRuntime):
                 runtime_config.get_nodejs_command(),
                 entrypoint_path,
                 encryption_key,
-                runtime_config.sandbox_uid,
-                runtime_config.sandbox_gid,
+                str(runtime_config.sandbox_uid),
+                str(runtime_config.sandbox_gid),
             ]
 
             # 执行进程，在preexecfn中设置seccomp安全限制
