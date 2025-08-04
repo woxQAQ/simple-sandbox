@@ -62,9 +62,6 @@ class RuntimeConfig:
             os.getenv("CODE_EXECUTION_TIMEOUT", "30")
         )
 
-        # 调试模式
-        self.debug_mode = os.getenv("DEBUG_MODE", "false").lower() == "true"
-
         # 测试模式
         self.test_mode = os.getenv("TEST_MODE", "false").lower() == "true"
 
@@ -130,7 +127,6 @@ class RuntimeConfig:
             "sandbox_gid": self.sandbox_gid,
             "transformer_timeout": self.transformer_timeout,
             "code_execution_timeout": self.code_execution_timeout,
-            "debug_mode": self.debug_mode,
             "test_mode": self.test_mode,
             "python_command": self.get_python_command(),
             "nodejs_command": self.get_nodejs_command(),

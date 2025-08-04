@@ -2,15 +2,15 @@
 Node.js 运行时工具函数
 """
 
+import logging
 import os
 import shutil
 import uuid
 from contextlib import contextmanager
 
 from src.config import runtime_config
-from src.runtime.logging_config import create_runtime_logger
 
-logger = create_runtime_logger(__name__)
+logger = logging.getLogger(__name__)
 
 
 class NodeJSRuntimeUtils:

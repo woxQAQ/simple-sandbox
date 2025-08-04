@@ -129,7 +129,6 @@ class TestConfigurationIntegration:
         sandbox = TestSandboxEnvironment()
         with sandbox.context():
             assert sandbox.config.test_mode is True
-            assert sandbox.config.debug_mode is True
 
         # 清理后环境变量应该被移除
         import os

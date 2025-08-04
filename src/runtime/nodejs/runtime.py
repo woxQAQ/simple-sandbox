@@ -1,15 +1,15 @@
 import os
 import subprocess  # nosec B404
 import time
+import logging
 
 from src.config import runtime_config
 from src.models import ExecutionResult, ExecutionStatus
 from src.runtime.common.base import LanguageRuntime
-from src.runtime.logging_config import create_runtime_logger
 from src.runtime.nodejs.utils import NodeJSRuntimeUtils
 from src.utils.crypto_utils import CryptoUtils
 
-logger = create_runtime_logger(__name__)
+logger = logging.getLogger(__name__)
 
 
 class NodeJSRuntime(LanguageRuntime):
