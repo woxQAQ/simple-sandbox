@@ -72,17 +72,17 @@ class NodeJSRuntimeUtils:
         for src_file in files_to_copy:
             if os.path.exists(src_file):
                 # 计算目标路径
-                # if src_file.startswith("/var/sandbox/nodejs/"):
-                #     # 安全库放在沙盒根目录
-                #     dst_file = os.path.join(
-                #         sandbox_dir, os.path.basename(src_file)
-                #     )
-                # else:
-                # 其他文件保持原路径结构
-                rel_path = os.path.relpath(src_file, "/")
-                dst_file = os.path.join(sandbox_dir, rel_path)
-                dst_dir = os.path.dirname(dst_file)
-                os.makedirs(dst_dir, exist_ok=True)
+                if src_file.startswith("/var/sandbox/nodejs/"):
+                    # 安全库放在沙盒根目录
+                    dst_file = os.path.join(
+                        sandbox_dir, os.path.basename(src_file)
+                    )
+                else:
+                    # 其他文件保持原路径结构
+                    rel_path = os.path.relpath(src_file, "/")
+                    dst_file = os.path.join(sandbox_dir, rel_path)
+                    dst_dir = os.path.dirname(dst_file)
+                    os.makedirs(dst_dir, exist_ok=True)
 
                 try:
                     # 使用硬链接而不是复制，减少磁盘I/O
