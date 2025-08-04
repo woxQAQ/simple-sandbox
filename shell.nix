@@ -10,6 +10,7 @@ pkgs.mkShell {
     uv
     python311
     zsh
+    allure
   ];
   shellHook = # sh
     ''

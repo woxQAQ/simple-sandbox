@@ -103,5 +103,4 @@ sandbox/
 
 - `GET /` - 根路径，返回服务信息
 - `GET /api/v1/health` - 健康检查
-- `GET /api/v1/languages` - 支持的语言列表
 - `POST /api/v1/execute` - 代码执行

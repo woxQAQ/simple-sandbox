@@ -1,8 +1,8 @@
+import logging
 import os
 import subprocess  # nosec B404
 import time
 import uuid
-import logging
 from typing import Dict
 
 from src.config import runtime_config

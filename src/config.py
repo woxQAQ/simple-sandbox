@@ -9,14 +9,17 @@ from dotenv import load_dotenv
 
 def load_env_file():
     """加载环境变量配置文件"""
+    # 首先检查项目根目录的 .env 文件
     env_file = Path(__file__).parent.parent / ".env"
     if env_file.exists():
         load_dotenv(env_file)
         return
-    
-    example_env_file = Path(__file__).parent.parent / ".env.example"
-    if example_env_file.exists():
-        load_dotenv(example_env_file)
+
+    # 然后检查 tests/e2e/ 目录的 .env 文件
+    e2e_env_file = Path(__file__).parent.parent / "tests" / "e2e" / ".env"
+    if e2e_env_file.exists():
+        load_dotenv(e2e_env_file)
+        return
 
 
 load_env_file()
@@ -30,9 +33,11 @@ class RuntimeConfig:
         self.nodejs_security_lib_dir = "/var/sandbox/nodejs"
         self.sandbox_uid = int(os.getenv("SANDBOX_USER_ID", "1000"))
         self.sandbox_gid = int(os.getenv("SANDBOX_GROUP_ID", "1000"))
-        self.code_execution_timeout = int(os.getenv("CODE_EXECUTION_TIMEOUT", "30"))
+        self.code_execution_timeout = int(
+            os.getenv("CODE_EXECUTION_TIMEOUT", "30")
+        )
         self.test_mode = os.getenv("TEST_MODE", "false").lower() == "true"
-        
+
         if self.test_mode:
             self._setup_test_paths()
 
@@ -73,7 +78,9 @@ class Config:
 
     MAX_CONCURRENT_REQUESTS = int(os.getenv("MAX_CONCURRENT_REQUESTS", "10"))
     MAX_REQUESTS_PER_MINUTE = int(os.getenv("MAX_REQUESTS_PER_MINUTE", "100"))
-    ENABLE_RATE_LIMITING = os.getenv("ENABLE_RATE_LIMITING", "true").lower() == "true"
+    ENABLE_RATE_LIMITING = (
+        os.getenv("ENABLE_RATE_LIMITING", "true").lower() == "true"
+    )
 
     @classmethod
     def to_dict(cls) -> Dict[str, Any]:

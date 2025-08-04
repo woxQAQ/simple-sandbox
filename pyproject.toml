@@ -45,6 +45,11 @@ dev = [
     "pytest-html>=4.1.1",
     "requests>=2.32.4",
     "python-dotenv>=1.1.1",
+    "pytest-xdist>=3.8.0",
+    "pytest-json-report>=1.5.0",
+    "pydantic>=2.9.2",
+    "pydantic-settings>=2.10.1",
+    "allure-pytest>=2.15.0",
 ]
 
 [tool.mypy]

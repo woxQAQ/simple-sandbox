@@ -1,7 +1,6 @@
-import os
+import logging
 import subprocess  # nosec B404
 import time
-import logging
 
 from src.config import runtime_config
 from src.models import ExecutionResult, ExecutionStatus

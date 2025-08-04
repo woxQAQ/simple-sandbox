@@ -34,12 +34,15 @@ COPY main.py ./
 # Build seccomp components (same as main Dockerfile)
 RUN chmod +x ./scripts/build.sh && ./scripts/build.sh
 
-# Node.js transformer dependencies removed
+# Install Node.js dependencies
+RUN cd src/runtime/nodejs/node_runtime && npm install
 
 # Create sandbox directories and copy seccomp libraries
-RUN mkdir -p /var/sandbox/python /var/sandbox/nodejs && \
+RUN mkdir -p /var/sandbox/python /var/sandbox/nodejs/runtime/ && \
     cp /app/build/lib/libseccomp_injector_python.so /var/sandbox/python/ && \
     cp /app/build/lib/libseccomp_injector_nodejs.so /var/sandbox/nodejs/
+
+COPY src/runtime/nodejs/node_runtime /var/sandbox/nodejs/runtime
 
 # Create non-root user for security (but don't switch to it)
 RUN useradd -m -u 1000 sandbox && \
@@ -56,5 +59,5 @@ ENV TEST_MODE=false
 # Expose port
 EXPOSE 8000
 
-# Default test command
-CMD ["python", "-m", "pytest", "tests/", "-v", "--cov=src", "--cov-report=term-missing"]
+# Default command
+CMD ["python", "main.py", "--port", "8000"]

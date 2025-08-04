@@ -81,8 +81,6 @@ class SimpleHTTPRequestHandler(BaseHTTPRequestHandler):
             self._handle_root()
         elif self.path == "/api/v1/health":
             self._handle_health()
-        elif self.path == "/api/v1/languages":
-            self._handle_languages()
         else:
             self._handle_404()
 
@@ -124,13 +122,6 @@ class SimpleHTTPRequestHandler(BaseHTTPRequestHandler):
         response = {
             "status": "healthy",
             "timestamp": time.strftime("%Y-%m-%d %H:%M:%S"),
-        }
-        self._send_json_response(response)
-
-    def _handle_languages(self):
-        """处理支持的语言列表"""
-        response = {
-            "languages": [lang.value for lang in Language],
         }
         self._send_json_response(response)
 

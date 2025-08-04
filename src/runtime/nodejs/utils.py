@@ -8,8 +8,6 @@ import shutil
 import uuid
 from contextlib import contextmanager
 
-from src.config import runtime_config
-
 logger = logging.getLogger(__name__)
 
 
