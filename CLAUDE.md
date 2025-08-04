@@ -2,8 +2,15 @@
 
 - The answer results in Chinese.
 - When you run any command in the shell, instead of using the `cd` command to switch to the target directory, you should concatenate the full relative path where the path is required in the command being executed.
-- When you want to run tests, use the makefile as possible.
 
+## code styles
+
+There are several code styles you MUST obey:
+
+- if you add comments, explain WHY you code the following logic instead of WHAT the following logic is.
+- reduce comments, a better function name is better than writing extend comment to explain the function
+- coding python with PEP 8 style guidelines.
+- AVOID using UNNECESSARY design pattern if you are doing anything that is easy.
 
 ## mcp servers
 
