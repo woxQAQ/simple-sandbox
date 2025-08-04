@@ -33,8 +33,7 @@ class NodeJSRuntimeUtils:
             # 复制安全库和网络相关文件
             NodeJSRuntimeUtils._copy_nodejs_sandbox_files(sandbox_dir)
 
-            if runtime_config.debug_mode:
-                logger.debug(f"创建Node.js沙盒目录: {sandbox_dir}")
+            logger.debug(f"创建Node.js沙盒目录: {sandbox_dir}")
 
             yield sandbox_dir
 
@@ -43,11 +42,9 @@ class NodeJSRuntimeUtils:
             try:
                 if os.path.exists(sandbox_dir):
                     shutil.rmtree(sandbox_dir)
-                    if runtime_config.debug_mode:
-                        logger.debug(f"清理Node.js沙盒目录: {sandbox_dir}")
+                    logger.debug(f"清理Node.js沙盒目录: {sandbox_dir}")
             except Exception as e:
-                if runtime_config.debug_mode:
-                    logger.debug(f"清理Node.js沙盒目录失败: {e}")
+                logger.debug(f"清理Node.js沙盒目录失败: {e}")
 
     @staticmethod
     def _copy_nodejs_sandbox_files(sandbox_dir: str):
@@ -90,13 +87,10 @@ class NodeJSRuntimeUtils:
                         os.remove(dst_file)
                     os.link(src_file, dst_file)
 
-                    if runtime_config.debug_mode:
-                        logger.debug(f"链接文件: {src_file} -> {dst_file}")
+                    logger.debug(f"链接文件: {src_file} -> {dst_file}")
                 except OSError:
                     # 如果硬链接失败，使用复制
                     shutil.copy2(src_file, dst_file)
-                    if runtime_config.debug_mode:
-                        logger.debug(f"复制文件: {src_file} -> {dst_file}")
+                    logger.debug(f"复制文件: {src_file} -> {dst_file}")
             else:
-                if runtime_config.debug_mode:
-                    logger.debug(f"源文件不存在，跳过: {src_file}")
+                logger.debug(f"源文件不存在，跳过: {src_file}")
