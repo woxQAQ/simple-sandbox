@@ -66,13 +66,18 @@ process_dir() {
 }
 
 main() {
-    local TARGETARCH="${TARGETARCH:-}"
     local python_lib=("/usr/local/lib/python3.11")
 
-    if [ "$TARGETARCH" = "amd64" ] || [ -z "$TARGETARCH" ]; then
+    # 直接使用 uname 检测系统架构
+    local arch
+    arch=$(uname -m)
+    if [ "$arch" = "x86_64" ]; then
         python_lib+=("/usr/lib/x86_64-linux-gnu")
-    else
+    elif [ "$arch" = "aarch64" ]; then
         python_lib+=("/usr/lib/aarch64-linux-gnu")
+    else
+        echo "Unsupported architecture: $arch"
+        exit 1
     fi
 
     local network_lib=(
