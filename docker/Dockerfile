@@ -56,8 +56,11 @@ RUN chmod +x ./scripts/build.sh && ./scripts/build.sh
 
 RUN cd src/runtime/nodejs/node_runtime && npm install
 
+# Run environment setup script during build
+RUN chmod +x ./scripts/env.sh && ./scripts/env.sh
+
 # Final stage - runtime image
-FROM --platform=$TARGETPLATFORM python:3.11-slim
+FROM python:3.11-slim
 
 # Configure APT mirror if provided
 ARG APT_MIRROR=""
@@ -69,6 +72,7 @@ RUN if [ -n "$APT_MIRROR" ]; then \
 # Install runtime dependencies only
 RUN apt-get update && apt-get install -y --no-install-recommends \
     libseccomp-dev \
+    zlib1g \
     curl \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
@@ -95,11 +99,10 @@ COPY pyproject.toml ./
 COPY --from=builder /usr/local/lib/python3.11/site-packages /usr/local/lib/python3.11/site-packages
 # Node.js transformer dependencies removed
 
-# Copy seccomp libraries to language-specific directories
-RUN mkdir -p /var/sandbox/python /var/sandbox/nodejs/runtime/ && \
-    cp /app/build/lib/libseccomp_injector_python.so /var/sandbox/python/ && \
-    cp /app/build/lib/libseccomp_injector_nodejs.so /var/sandbox/nodejs/
+# Copy seccomp libraries and environment setup from builder
+COPY --from=builder /var/sandbox /var/sandbox
 
+# Copy Node.js runtime
 COPY --from=builder /app/src/runtime/nodejs/node_runtime /var/sandbox/nodejs/runtime
 
 # Set environment variables
