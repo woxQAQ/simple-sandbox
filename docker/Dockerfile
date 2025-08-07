@@ -102,6 +102,10 @@ COPY --from=builder /usr/local/lib/python3.11/site-packages /usr/local/lib/pytho
 # Copy seccomp libraries and environment setup from builder
 COPY --from=builder /var/sandbox /var/sandbox
 
+# Copy seccomp injector libraries to correct runtime directories
+COPY --from=builder /app/build/lib/libseccomp_injector_python.so /var/sandbox/python/
+COPY --from=builder /app/build/lib/libseccomp_injector_nodejs.so /var/sandbox/nodejs/
+
 # Copy Node.js runtime
 COPY --from=builder /app/src/runtime/nodejs/node_runtime /var/sandbox/nodejs/runtime
 

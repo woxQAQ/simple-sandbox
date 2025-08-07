@@ -96,12 +96,6 @@ main() {
         process_dir "$lib" "/var/sandbox/nodejs"
     done
 
-    local python_so="/app/build/lib/libseccomp_injector_python.so"
-    local nodejs_so="/app/build/lib/libseccomp_injector_nodejs.so"
-
-    process_dir "$python_so" "/var/sandbox/python"
-    process_dir "$nodejs_so" "/var/sandbox/nodejs"
-
     echo "complete copy all lib to /var/sandbox"
 }
 
