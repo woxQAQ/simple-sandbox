@@ -102,7 +102,7 @@ RUN mkdir -p /var/sandbox/python /var/sandbox/nodejs/runtime/ && \
 
 COPY --from=builder /app/src/runtime/nodejs/node_runtime /var/sandbox/nodejs/runtime
 
-RUN python3 /app/scripts/env.py
+RUN ./scripts/env.py
 
 # Set environment variables
 ENV PYTHONPATH=/app
