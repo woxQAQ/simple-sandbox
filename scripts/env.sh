@@ -51,7 +51,7 @@ process_dir() {
     elif [ -d "$src" ]; then
         mkdir -p "$(dirname "$dst/$src")"
 
-        find "$src" -type f,l | while read -r src_file; do
+        find "$src" -type f,l -print0 | while IFS= read -r -d '' src_file; do
             local rel_path
             rel_path="${src_file#$src/}"
             local dest_file
