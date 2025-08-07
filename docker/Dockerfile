@@ -69,8 +69,7 @@ RUN if [ -n "$APT_MIRROR" ]; then \
 # Install runtime dependencies only
 RUN apt-get update && apt-get install -y --no-install-recommends \
     libseccomp-dev \
-    build-essential \
-    pkg-config \
+    zlib1g \
     curl \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
