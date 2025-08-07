@@ -46,21 +46,18 @@ process_dir() {
     fi
 
     if [ -f "$src" ]; then
-        local dest_file
-        dest_file="$dst/$(basename "$src")"
-        mkdir -p "$(dirname "$dest_file")"
-        copy_and_link "$src" "$dest_file"
+        mkdir -p "$(dirname "$dst/$src")"
+        copy_and_link "$src" "$dst/$src"
     elif [ -d "$src" ]; then
-        local dest_dir
-        dest_dir="$dst/$(basename "$src")"
-        mkdir -p "$(dirname "$dest_dir")"
+        mkdir -p "$(dirname "$dst/$src")"
 
-        find "$src" -type f -print0 | while IFS= read -r -d '' src_file; do
+        find "$src" -type f l | while read -r src_file; do
             local rel_path
             rel_path="${src_file#$src/}"
-            local dest_file="$dest_dir/$rel_path"
-            mkdir -p "$(dirname "$dest_file")"
-            copy_and_link "$src_file" "$dest_file"
+            local dest_file
+            rel_dir=$(dirname "$rel_path")
+            mkdir -p "$dst/$src/$rel_dir"
+            copy_and_link "$src_file" "$dst/$src/$rel_path"
         done
     else
         echo "$src is neither a file nor a dir"
