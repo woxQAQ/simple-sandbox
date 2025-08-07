@@ -57,7 +57,7 @@ RUN chmod +x ./scripts/build.sh && ./scripts/build.sh
 RUN cd src/runtime/nodejs/node_runtime && npm install
 
 # Final stage - runtime image
-FROM --platform=$TARGETPLATFORM python:3.11-slim
+FROM python:3.11-slim
 
 # Configure APT mirror if provided
 ARG APT_MIRROR=""
