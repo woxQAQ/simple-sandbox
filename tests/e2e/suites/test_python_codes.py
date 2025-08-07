@@ -113,18 +113,18 @@ try:
     import matplotlib.pyplot as plt
     import numpy as np
     print("matplotlib导入成功")
-    
+
     # 创建简单的图表
     x = np.linspace(0, 10, 100)
     y = np.sin(x)
-    
+
     plt.figure(figsize=(8, 4))
     plt.plot(x, y)
     plt.title('Sine Wave')
     plt.xlabel('x')
     plt.ylabel('sin(x)')
     plt.grid(True)
-    
+
     # 尝试保存到临时目录
     import tempfile
     import os
@@ -132,13 +132,13 @@ try:
     plot_path = os.path.join(temp_dir, 'test_plot.png')
     plt.savefig(plot_path)
     plt.close()
-    
+
     if os.path.exists(plot_path):
         print(f"图表已保存到 {plot_path}")
         print("matplotlib插件测试通过")
     else:
         print("图表保存失败")
-        
+
 except ImportError as e:
     print(f"matplotlib未安装或导入失败: {e}")
 except Exception as e:
@@ -208,21 +208,21 @@ except Exception as e:
 try:
     import socket
     print("socket模块导入成功")
-    
+
     # 尝试创建socket
     sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     print("socket创建成功")
-    
+
     # 尝试连接（应该失败）
     sock.settimeout(2)
     result = sock.connect_ex(('8.8.8.8', 53))
     sock.close()
-    
+
     if result == 0:
         print("网络访问成功 - 安全限制失败")
     else:
         print(f"网络访问被阻止，错误代码: {result}")
-        
+
 except ImportError as e:
     print(f"socket模块被阻止: {e}")
     print("网络安全限制生效")

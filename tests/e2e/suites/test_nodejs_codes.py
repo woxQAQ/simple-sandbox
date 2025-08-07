@@ -180,25 +180,25 @@ try {
 try {
     const net = require('net');
     console.log('net模块导入成功');
-    
+
     const socket = new net.Socket();
     let connectionBlocked = false;
     let testCompleted = false;
-    
+
     socket.connect(80, '8.8.8.8', () => {
         console.log('网络访问成功 - 安全限制失败');
         connectionBlocked = false;
         testCompleted = true;
         socket.destroy();
     });
-    
+
     socket.on('error', (error) => {
         console.log('网络访问被正确阻止:', error.message);
         connectionBlocked = true;
         testCompleted = true;
         socket.destroy();
     });
-    
+
     // 设置较短的超时
     setTimeout(() => {
         if (!testCompleted) {
@@ -207,7 +207,7 @@ try {
         }
         socket.destroy();
     }, 1500);
-    
+
 } catch (error) {
     console.log('网络访问测试异常:', error.message);
     console.log('网络安全限制生效');
@@ -234,13 +234,13 @@ setTimeout(() => {
 try {
     const { exec } = require('child_process');
     console.log('child_process模块导入成功');
-    
+
     // 设置全局错误处理器
     process.on('uncaughtException', (error) => {
         console.log('未捕获的异常:', error.message);
         console.log('系统命令安全限制生效');
     });
-    
+
     exec('ls -la', { timeout: 2000 }, (error, stdout, stderr) => {
         if (error) {
             console.log('系统命令执行被正确阻止:', error.message);
