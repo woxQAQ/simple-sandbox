@@ -1,0 +1,4 @@
+---
+alwaysApply: true
+---
+不要使用 cat 来捕获stdout
