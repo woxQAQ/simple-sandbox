@@ -32,7 +32,7 @@ func New() (*Manager, error) {
 	if sock == "" {
 		sock = "unix:///var/run/containerd/containerd.sock"
 	}
-	conn, err := grpc.Dial(
+	conn, err := grpc.NewClient(
 		sock,
 		grpc.WithTransportCredentials(insecure.NewCredentials()),
 		grpc.WithContextDialer(func(ctx context.Context, addr string) (net.Conn, error) {
@@ -94,7 +94,7 @@ func (m *Manager) Run(ctx context.Context, req models.RunRequest) (models.RunRes
 
 	// pod sandbox with log directory
 	podCfg := &runtimeapi.PodSandboxConfig{
-		Metadata: &runtimeapi.PodSandboxMetadata{Name: sandboxName, Namespace: "default"},
+		Metadata: &runtimeapi.PodSandboxMetadata{Name: sandboxName, Namespace: req.Namespace},
 		Linux: &runtimeapi.LinuxPodSandboxConfig{
 			SecurityContext: &runtimeapi.LinuxSandboxSecurityContext{NamespaceOptions: &runtimeapi.NamespaceOption{}},
 		},
@@ -106,8 +106,12 @@ func (m *Manager) Run(ctx context.Context, req models.RunRequest) (models.RunRes
 	}
 	sandboxID := sandboxResp.PodSandboxId
 	defer func() {
-		_, _ = m.runtime.StopPodSandbox(context.Background(), &runtimeapi.StopPodSandboxRequest{PodSandboxId: sandboxID})
-		_, _ = m.runtime.RemovePodSandbox(context.Background(), &runtimeapi.RemovePodSandboxRequest{PodSandboxId: sandboxID})
+		_, _ = m.runtime.StopPodSandbox(context.Background(), &runtimeapi.StopPodSandboxRequest{
+			PodSandboxId: sandboxID,
+		})
+		_, _ = m.runtime.RemovePodSandbox(context.Background(), &runtimeapi.RemovePodSandboxRequest{
+			PodSandboxId: sandboxID,
+		})
 	}()
 
 	// container config

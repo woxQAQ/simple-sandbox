@@ -17,6 +17,7 @@ type RunRequest struct {
 	TimeLimitMs int      `json:"time_limit_ms"`
 	MemoryMB    int      `json:"memory_mb"`
 	CPUShares   int      `json:"cpu_shares"`
+	Namespace   string   `json:"namespace"`
 }
 
 type RunResult struct {
@@ -45,6 +46,9 @@ func (r *RunRequest) Validate() error {
 	}
 	if r.CPUShares <= 0 {
 		r.CPUShares = 256
+	}
+	if r.Namespace == "" {
+		r.Namespace = "default"
 	}
 	return nil
 }

@@ -56,9 +56,12 @@ func (m *Manager) Run(ctx context.Context, req models.RunRequest) (models.RunRes
 		return models.RunResult{}, err
 	}
 
+	ns := req.Namespace
+
 	ref := config.ImageRefFor(req.Language)
 	image := ref.Registry + "/" + ref.Repository + ":" + ref.Tag
 
+	// Determine code key by language
 	codeKey := "main"
 	switch req.Language {
 	case models.LanguagePython:
@@ -72,19 +75,19 @@ func (m *Manager) Run(ctx context.Context, req models.RunRequest) (models.RunRes
 	podName := "sb-pod-" + suffix
 
 	cm := &corev1.ConfigMap{
-		ObjectMeta: metav1.ObjectMeta{Name: cmName},
+		ObjectMeta: metav1.ObjectMeta{Name: cmName, Namespace: ns},
 		Data:       map[string]string{codeKey: req.Code},
 	}
-	if _, err := m.client.CoreV1().ConfigMaps(m.namespace).Create(ctx, cm, metav1.CreateOptions{}); err != nil {
+	if _, err := m.client.CoreV1().ConfigMaps(ns).Create(ctx, cm, metav1.CreateOptions{}); err != nil {
 		return models.RunResult{}, fmt.Errorf("create configmap: %w", err)
 	}
 	defer func() {
-		_ = m.client.CoreV1().ConfigMaps(m.namespace).Delete(context.Background(), cmName, metav1.DeleteOptions{})
+		_ = m.client.CoreV1().ConfigMaps(ns).Delete(context.Background(), cmName, metav1.DeleteOptions{})
 	}()
 
 	// Pod with default securityContext; tmpfs-like /tmp via emptyDir memory
 	pod := &corev1.Pod{
-		ObjectMeta: metav1.ObjectMeta{Name: podName},
+		ObjectMeta: metav1.ObjectMeta{Name: podName, Namespace: ns},
 		Spec: corev1.PodSpec{
 			RestartPolicy:                corev1.RestartPolicyNever,
 			AutomountServiceAccountToken: func(b bool) *bool { return &b }(false),
@@ -106,11 +109,11 @@ func (m *Manager) Run(ctx context.Context, req models.RunRequest) (models.RunRes
 			},
 		},
 	}
-	if _, err := m.client.CoreV1().Pods(m.namespace).Create(ctx, pod, metav1.CreateOptions{}); err != nil {
+	if _, err := m.client.CoreV1().Pods(ns).Create(ctx, pod, metav1.CreateOptions{}); err != nil {
 		return models.RunResult{}, fmt.Errorf("create pod: %w", err)
 	}
 	defer func() {
-		_ = m.client.CoreV1().Pods(m.namespace).Delete(context.Background(), podName, metav1.DeleteOptions{})
+		_ = m.client.CoreV1().Pods(ns).Delete(context.Background(), podName, metav1.DeleteOptions{})
 	}()
 
 	deadline := time.Duration(req.TimeLimitMs+2000) * time.Millisecond
@@ -118,7 +121,7 @@ func (m *Manager) Run(ctx context.Context, req models.RunRequest) (models.RunRes
 	defer cancel()
 	// wait for completion
 	err := wait.PollUntilContextCancel(ctxW, 500*time.Millisecond, true, func(ctx context.Context) (done bool, err error) {
-		p, err := m.client.CoreV1().Pods(m.namespace).Get(ctx, podName, metav1.GetOptions{})
+		p, err := m.client.CoreV1().Pods(ns).Get(ctx, podName, metav1.GetOptions{})
 		if err != nil {
 			return false, nil
 		}
@@ -133,7 +136,7 @@ func (m *Manager) Run(ctx context.Context, req models.RunRequest) (models.RunRes
 	}
 
 	// fetch logs
-	reqLog := m.client.CoreV1().Pods(m.namespace).GetLogs(podName, &corev1.PodLogOptions{Container: "runner"})
+	reqLog := m.client.CoreV1().Pods(ns).GetLogs(podName, &corev1.PodLogOptions{Container: "runner"})
 	stream, err := reqLog.Stream(context.Background())
 	if err != nil {
 		return models.RunResult{}, fmt.Errorf("pod logs: %w", err)
