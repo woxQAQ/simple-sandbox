@@ -62,10 +62,21 @@ func (m *Manager) Run(ctx context.Context, req models.RunRequest) (models.RunRes
 	}
 
 	ref := config.ImageRefFor(req.Language)
-	image := ref.Registry + "/" + ref.Repository + ":" + ref.Tag
+	image := config.ImageFor(req.Language)
 
 	// ensure image
-	_, err := m.images.PullImage(ctx, &runtimeapi.PullImageRequest{Image: &runtimeapi.ImageSpec{Image: image}})
+	authInfo := config.RegistryAuthFor(ref.Registry)
+	pullReq := &runtimeapi.PullImageRequest{Image: &runtimeapi.ImageSpec{Image: image}}
+	if authInfo.Username != "" || authInfo.IdentityToken != "" || authInfo.Auth != "" {
+		pullReq.Auth = &runtimeapi.AuthConfig{
+			Username:      authInfo.Username,
+			Password:      authInfo.Password,
+			Auth:          authInfo.Auth,
+			IdentityToken: authInfo.IdentityToken,
+			ServerAddress: authInfo.ServerAddress,
+		}
+	}
+	_, err := m.images.PullImage(ctx, pullReq)
 	if err != nil {
 		return models.RunResult{}, fmt.Errorf("pull image: %w", err)
 	}

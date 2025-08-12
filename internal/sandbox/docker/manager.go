@@ -48,7 +48,7 @@ func (m *Manager) Run(ctx context.Context, req models.RunRequest) (models.RunRes
 	}
 
 	image, filename := imageAndFileFor(req.Language)
-	if err := m.ensureImage(ctx, image); err != nil {
+	if err := m.ensureImage(ctx, image, req.Language); err != nil {
 		return models.RunResult{}, fmt.Errorf("ensure image: %w", err)
 	}
 
@@ -174,12 +174,17 @@ type ImageRef struct {
 	Tag        string
 }
 
-func (m *Manager) ensureImage(ctx context.Context, image string) error {
+func (m *Manager) ensureImage(ctx context.Context, image string, _ models.Language) error {
 	_, _, err := m.cli.ImageInspectWithRaw(ctx, image)
 	if err == nil {
 		return nil
 	}
-	pullReader, err := m.cli.ImagePull(ctx, image, imageTypes.PullOptions{})
+	// auth header if needed
+	refParts := strings.SplitN(image, "/", 2)
+	server := refParts[0]
+	authInfo := config.RegistryAuthFor(server)
+	authHeader, _ := config.DockerRegistryAuthHeader(authInfo)
+	pullReader, err := m.cli.ImagePull(ctx, image, imageTypes.PullOptions{RegistryAuth: authHeader})
 	if err != nil {
 		return fmt.Errorf("pull image failed: %w", err)
 	}
@@ -189,8 +194,7 @@ func (m *Manager) ensureImage(ctx context.Context, image string) error {
 }
 
 func imageAndFileFor(lang models.Language) (string, string) {
-	ref := config.ImageRefFor(lang)
-	full := ref.Registry + "/" + ref.Repository + ":" + ref.Tag
+	full := config.ImageFor(lang)
 	switch lang {
 	case models.LanguagePython:
 		return full, "main.py"

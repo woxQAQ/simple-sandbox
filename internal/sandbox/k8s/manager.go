@@ -58,8 +58,8 @@ func (m *Manager) Run(ctx context.Context, req models.RunRequest) (models.RunRes
 
 	ns := req.Namespace
 
-	ref := config.ImageRefFor(req.Language)
-	image := ref.Registry + "/" + ref.Repository + ":" + ref.Tag
+	image := config.ImageFor(req.Language)
+	pullSecret := config.K8sImagePullSecret()
 
 	// Determine code key by language
 	codeKey := "main"
@@ -91,6 +91,12 @@ func (m *Manager) Run(ctx context.Context, req models.RunRequest) (models.RunRes
 		Spec: corev1.PodSpec{
 			RestartPolicy:                corev1.RestartPolicyNever,
 			AutomountServiceAccountToken: func(b bool) *bool { return &b }(false),
+			ImagePullSecrets: func() []corev1.LocalObjectReference {
+				if pullSecret == "" {
+					return nil
+				}
+				return []corev1.LocalObjectReference{{Name: pullSecret}}
+			}(),
 			Containers: []corev1.Container{{
 				Name:       "runner",
 				Image:      image,

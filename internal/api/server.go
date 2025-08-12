@@ -5,10 +5,9 @@ import (
 	"encoding/json"
 	"errors"
 	"net/http"
-	"os"
-	"strconv"
 	"time"
 
+	"github.com/woxqaq/simple-sandbox/internal/config"
 	"github.com/woxqaq/simple-sandbox/internal/logging"
 	"github.com/woxqaq/simple-sandbox/internal/models"
 	"github.com/woxqaq/simple-sandbox/internal/sandbox"
@@ -22,9 +21,8 @@ type Server struct {
 
 func NewServer(mgr sandbox.SandboxManager) *Server {
 	// wrap with queue/limit by default
-	maxConc := getEnvInt("SANDBOX_MAX_CONCURRENCY", 4)
-	maxQueue := getEnvInt("SANDBOX_MAX_QUEUE", 32)
-	mgr = limited.NewQueueingManager(mgr, maxConc, maxQueue)
+	runtimeConfig := config.GetRuntimeConfig()
+	mgr = limited.NewQueueingManager(mgr, runtimeConfig.MaxConcurrency, runtimeConfig.MaxQueue)
 	return &Server{mgr: mgr}
 }
 
@@ -65,14 +63,3 @@ func (s *Server) handleRun(w http.ResponseWriter, r *http.Request) {
 	_ = json.NewEncoder(w).Encode(res)
 }
 
-func getEnvInt(key string, def int) int {
-	v := os.Getenv(key)
-	if v == "" {
-		return def
-	}
-	i, err := strconv.Atoi(v)
-	if err != nil {
-		return def
-	}
-	return i
-}

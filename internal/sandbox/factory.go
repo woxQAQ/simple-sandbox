@@ -2,18 +2,16 @@ package sandbox
 
 import (
 	"fmt"
-	"os"
 
+	"github.com/woxqaq/simple-sandbox/internal/config"
 	crimgr "github.com/woxqaq/simple-sandbox/internal/sandbox/cri"
 	dockermgr "github.com/woxqaq/simple-sandbox/internal/sandbox/docker"
 	k8smgr "github.com/woxqaq/simple-sandbox/internal/sandbox/k8s"
 )
 
 func NewFromEnv() (SandboxManager, error) {
-	b := os.Getenv("SANDBOX_BACKEND")
-	if b == "" {
-		b = "docker"
-	}
+	runtimeConfig := config.GetRuntimeConfig()
+	b := runtimeConfig.Backend
 	switch b {
 	case "docker":
 		return dockermgr.New()

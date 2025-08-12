@@ -6,6 +6,7 @@ import (
 	"net/http"
 
 	"github.com/woxqaq/simple-sandbox/internal/api"
+	"github.com/woxqaq/simple-sandbox/internal/config"
 	"github.com/woxqaq/simple-sandbox/internal/logging"
 	"github.com/woxqaq/simple-sandbox/internal/sandbox"
 )
@@ -18,6 +19,10 @@ func main() {
 		log.Fatalf("init logger: %v", err)
 	}
 	defer logging.Sync()
+
+	if err := config.Init(); err != nil {
+		log.Fatalf("load config: %v", err)
+	}
 
 	mgr, err := sandbox.NewFromEnv()
 	if err != nil {
