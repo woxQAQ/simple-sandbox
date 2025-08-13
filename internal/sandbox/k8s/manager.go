@@ -51,9 +51,9 @@ type runnerJSON struct {
 	ExitCode  int      `json:"exit_code"`
 }
 
-func (m *Manager) Run(ctx context.Context, req models.RunRequest) (models.RunResult, error) {
+func (m *Manager) Run(ctx context.Context, req *models.RunRequest) (*models.RunResult, error) {
 	if err := req.Validate(); err != nil {
-		return models.RunResult{}, err
+		return nil, err
 	}
 
 	ns := req.Namespace
@@ -79,7 +79,7 @@ func (m *Manager) Run(ctx context.Context, req models.RunRequest) (models.RunRes
 		Data:       map[string]string{codeKey: req.Code},
 	}
 	if _, err := m.client.CoreV1().ConfigMaps(ns).Create(ctx, cm, metav1.CreateOptions{}); err != nil {
-		return models.RunResult{}, fmt.Errorf("create configmap: %w", err)
+		return nil, fmt.Errorf("create configmap: %w", err)
 	}
 	defer func() {
 		_ = m.client.CoreV1().ConfigMaps(ns).Delete(context.Background(), cmName, metav1.DeleteOptions{})
@@ -116,7 +116,7 @@ func (m *Manager) Run(ctx context.Context, req models.RunRequest) (models.RunRes
 		},
 	}
 	if _, err := m.client.CoreV1().Pods(ns).Create(ctx, pod, metav1.CreateOptions{}); err != nil {
-		return models.RunResult{}, fmt.Errorf("create pod: %w", err)
+		return nil, fmt.Errorf("create pod: %w", err)
 	}
 	defer func() {
 		_ = m.client.CoreV1().Pods(ns).Delete(context.Background(), podName, metav1.DeleteOptions{})
@@ -138,19 +138,19 @@ func (m *Manager) Run(ctx context.Context, req models.RunRequest) (models.RunRes
 		return false, nil
 	})
 	if err != nil && ctxW.Err() != nil {
-		return models.RunResult{}, ctxW.Err()
+		return nil, ctxW.Err()
 	}
 
 	// fetch logs
 	reqLog := m.client.CoreV1().Pods(ns).GetLogs(podName, &corev1.PodLogOptions{Container: "runner"})
 	stream, err := reqLog.Stream(context.Background())
 	if err != nil {
-		return models.RunResult{}, fmt.Errorf("pod logs: %w", err)
+		return nil, fmt.Errorf("pod logs: %w", err)
 	}
 	defer stream.Close()
 	buf := new(bytes.Buffer)
 	if _, err := io.Copy(buf, stream); err != nil {
-		return models.RunResult{}, err
+		return nil, err
 	}
 
 	var r runnerJSON
@@ -158,7 +158,7 @@ func (m *Manager) Run(ctx context.Context, req models.RunRequest) (models.RunRes
 	if idx >= 0 {
 		_ = json.Unmarshal(buf.Bytes()[idx:], &r)
 	}
-	return models.RunResult{ExitCode: r.ExitCode, Stdout: r.Stdout, Stderr: r.Stderr, ImagesB64: r.ImagesB64}, nil
+	return &models.RunResult{ExitCode: r.ExitCode, Stdout: r.Stdout, Stderr: r.Stderr, ImagesB64: r.ImagesB64}, nil
 }
 
 func randHex(n int) string { b := make([]byte, n); _, _ = rand.Read(b); return hex.EncodeToString(b) }

@@ -56,9 +56,9 @@ type runnerJSON struct {
 	ExitCode  int      `json:"exit_code"`
 }
 
-func (m *Manager) Run(ctx context.Context, req models.RunRequest) (models.RunResult, error) {
+func (m *Manager) Run(ctx context.Context, req *models.RunRequest) (*models.RunResult, error) {
 	if err := req.Validate(); err != nil {
-		return models.RunResult{}, err
+		return nil, err
 	}
 
 	ref := config.ImageRefFor(req.Language)
@@ -78,13 +78,13 @@ func (m *Manager) Run(ctx context.Context, req models.RunRequest) (models.RunRes
 	}
 	_, err := m.images.PullImage(ctx, pullReq)
 	if err != nil {
-		return models.RunResult{}, fmt.Errorf("pull image: %w", err)
+		return nil, fmt.Errorf("pull image: %w", err)
 	}
 
 	// prepare workspace dir
 	ws, err := os.MkdirTemp("", "sandbox-cri-")
 	if err != nil {
-		return models.RunResult{}, err
+		return nil, err
 	}
 	defer os.RemoveAll(ws)
 	codeFile := "main"
@@ -95,7 +95,7 @@ func (m *Manager) Run(ctx context.Context, req models.RunRequest) (models.RunRes
 		codeFile = "main.js"
 	}
 	if err := os.WriteFile(filepath.Join(ws, codeFile), []byte(req.Code), 0644); err != nil {
-		return models.RunResult{}, err
+		return nil, err
 	}
 
 	// names
@@ -113,7 +113,7 @@ func (m *Manager) Run(ctx context.Context, req models.RunRequest) (models.RunRes
 	}
 	sandboxResp, err := m.runtime.RunPodSandbox(ctx, &runtimeapi.RunPodSandboxRequest{Config: podCfg})
 	if err != nil {
-		return models.RunResult{}, fmt.Errorf("RunPodSandbox: %w", err)
+		return nil, fmt.Errorf("RunPodSandbox: %w", err)
 	}
 	sandboxID := sandboxResp.PodSandboxId
 	defer func() {
@@ -163,7 +163,7 @@ func (m *Manager) Run(ctx context.Context, req models.RunRequest) (models.RunRes
 		SandboxConfig: podCfg,
 	})
 	if err != nil {
-		return models.RunResult{}, fmt.Errorf("CreateContainer: %w", err)
+		return nil, fmt.Errorf("CreateContainer: %w", err)
 	}
 	containerID := created.ContainerId
 	defer func() {
@@ -171,7 +171,7 @@ func (m *Manager) Run(ctx context.Context, req models.RunRequest) (models.RunRes
 	}()
 
 	if _, err := m.runtime.StartContainer(ctx, &runtimeapi.StartContainerRequest{ContainerId: containerID}); err != nil {
-		return models.RunResult{}, fmt.Errorf("StartContainer: %w", err)
+		return nil, fmt.Errorf("StartContainer: %w", err)
 	}
 
 	deadline := time.Now().Add(time.Duration(req.TimeLimitMs+2000) * time.Millisecond)
@@ -182,7 +182,7 @@ func (m *Manager) Run(ctx context.Context, req models.RunRequest) (models.RunRes
 		}
 		if time.Now().After(deadline) {
 			_, _ = m.runtime.StopContainer(context.Background(), &runtimeapi.StopContainerRequest{ContainerId: containerID, Timeout: 1})
-			return models.RunResult{}, context.DeadlineExceeded
+			return nil, context.DeadlineExceeded
 		}
 		time.Sleep(200 * time.Millisecond)
 	}
@@ -190,7 +190,7 @@ func (m *Manager) Run(ctx context.Context, req models.RunRequest) (models.RunRes
 	// obtain log path from status (runtime may override)
 	st, err := m.runtime.ContainerStatus(ctx, &runtimeapi.ContainerStatusRequest{ContainerId: containerID, Verbose: false})
 	if err != nil {
-		return models.RunResult{}, fmt.Errorf("ContainerStatus: %w", err)
+		return nil, fmt.Errorf("ContainerStatus: %w", err)
 	}
 	logFull := st.Status.LogPath
 	if logFull == "" {
@@ -199,19 +199,19 @@ func (m *Manager) Run(ctx context.Context, req models.RunRequest) (models.RunRes
 
 	f, err := os.Open(logFull)
 	if err != nil {
-		return models.RunResult{}, fmt.Errorf("open log: %w", err)
+		return nil, fmt.Errorf("open log: %w", err)
 	}
 	defer f.Close()
 	buf := new(bytes.Buffer)
 	if _, err := io.Copy(buf, f); err != nil {
-		return models.RunResult{}, err
+		return nil, err
 	}
 
 	parsed, perr := parseRunnerJSON(buf.Bytes())
 	if perr != nil {
-		return models.RunResult{ExitCode: -1, Stdout: buf.String()}, nil
+		return &models.RunResult{ExitCode: -1, Stdout: buf.String()}, nil
 	}
-	return models.RunResult{ExitCode: parsed.ExitCode, Stdout: parsed.Stdout, Stderr: parsed.Stderr, ImagesB64: parsed.ImagesB64}, nil
+	return &models.RunResult{ExitCode: parsed.ExitCode, Stdout: parsed.Stdout, Stderr: parsed.Stderr, ImagesB64: parsed.ImagesB64}, nil
 }
 
 func parseRunnerJSON(raw []byte) (runnerJSON, error) {

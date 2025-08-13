@@ -12,7 +12,7 @@ var pythonProfile string
 //go:embed node.json
 var nodeProfile string
 
-func For(lang models.Language) string {
+func For(lang string) string {
 	switch lang {
 	case models.LanguagePython:
 		return pythonProfile

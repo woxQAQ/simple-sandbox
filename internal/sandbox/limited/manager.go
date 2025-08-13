@@ -31,34 +31,39 @@ func NewQueueingManager(inner sandbox.SandboxManager, maxConcurrent int, maxQueu
 		inner: inner,
 		jobs:  make(chan job, maxQueue),
 	}
-	for i := 0; i < maxConcurrent; i++ {
+	for range maxConcurrent {
 		go qm.worker()
 	}
 	return qm
 }
 
-func (q *QueueingManager) Run(ctx context.Context, req models.RunRequest) (models.RunResult, error) {
+func (q *QueueingManager) Run(ctx context.Context, req *models.RunRequest) (*models.RunResult, error) {
 	resC := make(chan result, 1)
-	j := job{ctx: ctx, req: req, resC: resC}
+	// 复制请求，避免调用方后续修改产生数据竞争
+	j := job{ctx: ctx, req: *req, resC: resC}
 	select {
 	case q.jobs <- j:
 		// enqueued
 	case <-ctx.Done():
-		return models.RunResult{}, ctx.Err()
+		return nil, ctx.Err()
 	default:
-		return models.RunResult{}, ErrQueueFull
+		return nil, ErrQueueFull
 	}
 	select {
 	case out := <-resC:
-		return out.res, out.err
+		return &out.res, out.err
 	case <-ctx.Done():
-		return models.RunResult{}, ctx.Err()
+		return nil, ctx.Err()
 	}
 }
 
 func (q *QueueingManager) worker() {
 	for j := range q.jobs {
-		res, err := q.inner.Run(j.ctx, j.req)
-		j.resC <- result{res: res, err: err}
+		res, err := q.inner.Run(j.ctx, &j.req)
+		if res != nil {
+			j.resC <- result{res: *res, err: err}
+		} else {
+			j.resC <- result{err: err}
+		}
 	}
 }

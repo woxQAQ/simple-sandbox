@@ -16,8 +16,8 @@ type fakeMgr struct {
 	err error
 }
 
-func (f *fakeMgr) Run(ctx context.Context, req models.RunRequest) (models.RunResult, error) {
-	return f.res, f.err
+func (f *fakeMgr) Run(ctx context.Context, req *models.RunRequest) (*models.RunResult, error) {
+	return &f.res, f.err
 }
 
 func TestRunHandler_OK(t *testing.T) {

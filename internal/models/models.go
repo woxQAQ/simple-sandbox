@@ -4,20 +4,18 @@ import (
 	"errors"
 )
 
-type Language string
-
 const (
-	LanguagePython Language = "python"
-	LanguageNode   Language = "node"
+	LanguagePython = "python"
+	LanguageNode   = "node"
 )
 
 type RunRequest struct {
-	Language    Language `json:"language"`
-	Code        string   `json:"code"`
-	TimeLimitMs int      `json:"time_limit_ms"`
-	MemoryMB    int      `json:"memory_mb"`
-	CPUShares   int      `json:"cpu_shares"`
-	Namespace   string   `json:"namespace"`
+	Language    string `json:"language"`
+	Code        string `json:"code"`
+	TimeLimitMs int    `json:"time_limit_ms"`
+	MemoryMB    int    `json:"memory_mb"`
+	CPUShares   int    `json:"cpu_shares"`
+	Namespace   string `json:"namespace"`
 }
 
 type RunResult struct {

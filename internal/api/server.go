@@ -48,7 +48,7 @@ func (s *Server) handleRun(w http.ResponseWriter, r *http.Request) {
 	}
 	ctx, cancel := context.WithTimeout(r.Context(), time.Duration(req.TimeLimitMs+2000)*time.Millisecond)
 	defer cancel()
-	res, err := s.mgr.Run(ctx, req)
+	res, err := s.mgr.Run(ctx, &req)
 	if err != nil {
 		if errors.Is(err, limited.ErrQueueFull) {
 			w.WriteHeader(http.StatusTooManyRequests)
@@ -62,4 +62,3 @@ func (s *Server) handleRun(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	_ = json.NewEncoder(w).Encode(res)
 }
-

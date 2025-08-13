@@ -42,25 +42,25 @@ type runnerJSON struct {
 	ExitCode  int      `json:"exit_code"`
 }
 
-func (m *Manager) Run(ctx context.Context, req models.RunRequest) (models.RunResult, error) {
+func (m *Manager) Run(ctx context.Context, req *models.RunRequest) (*models.RunResult, error) {
 	if err := req.Validate(); err != nil {
-		return models.RunResult{}, err
+		return nil, err
 	}
 
 	image, filename := imageAndFileFor(req.Language)
 	if err := m.ensureImage(ctx, image, req.Language); err != nil {
-		return models.RunResult{}, fmt.Errorf("ensure image: %w", err)
+		return nil, fmt.Errorf("ensure image: %w", err)
 	}
 
 	tmpDir, err := os.MkdirTemp("", "sandbox-ws-")
 	if err != nil {
-		return models.RunResult{}, err
+		return nil, err
 	}
 	defer os.RemoveAll(tmpDir)
 
 	codePath := filepath.Join(tmpDir, filename)
 	if err := os.WriteFile(codePath, []byte(req.Code), 0644); err != nil {
-		return models.RunResult{}, err
+		return nil, err
 	}
 
 	workspaceMount := mount.Mount{Type: mount.TypeBind, Source: tmpDir, Target: "/workspace", ReadOnly: true}
@@ -96,7 +96,7 @@ func (m *Manager) Run(ctx context.Context, req models.RunRequest) (models.RunRes
 
 	created, err := m.cli.ContainerCreate(ctx, cfg, hostCfg, nil, nil, "")
 	if err != nil {
-		return models.RunResult{}, err
+		return nil, err
 	}
 	containerID := created.ID
 	defer func() {
@@ -105,7 +105,7 @@ func (m *Manager) Run(ctx context.Context, req models.RunRequest) (models.RunRes
 
 	start := time.Now()
 	if err := m.cli.ContainerStart(ctx, containerID, containerTypes.StartOptions{}); err != nil {
-		return models.RunResult{}, err
+		return nil, err
 	}
 
 	// enforce time limit
@@ -116,10 +116,10 @@ func (m *Manager) Run(ctx context.Context, req models.RunRequest) (models.RunRes
 	select {
 	case <-ctxRun.Done():
 		_ = m.cli.ContainerKill(context.Background(), containerID, "KILL")
-		return models.RunResult{}, context.DeadlineExceeded
+		return nil, context.DeadlineExceeded
 	case err := <-errCh:
 		if err != nil {
-			return models.RunResult{}, err
+			return nil, err
 		}
 	case status := <-doneCh:
 		_ = status // we'll read logs for exit code json
@@ -127,21 +127,21 @@ func (m *Manager) Run(ctx context.Context, req models.RunRequest) (models.RunRes
 
 	reader, err := m.cli.ContainerLogs(ctx, containerID, containerTypes.LogsOptions{ShowStdout: true, ShowStderr: true})
 	if err != nil {
-		return models.RunResult{}, err
+		return nil, err
 	}
 	defer reader.Close()
 	buf := new(bytes.Buffer)
 	if _, err := io.Copy(buf, reader); err != nil {
-		return models.RunResult{}, err
+		return nil, err
 	}
 
 	parsed, parseErr := parseRunnerJSON(buf.Bytes())
 	if parseErr != nil {
 		logging.Logger.Warn("failed to parse runner json, returning raw logs", zap.Error(parseErr))
-		return models.RunResult{ExitCode: -1, Stdout: buf.String(), Stderr: "", ImagesB64: nil, DurationMs: int(time.Since(start).Milliseconds())}, nil
+		return &models.RunResult{ExitCode: -1, Stdout: buf.String(), Stderr: "", ImagesB64: nil, DurationMs: int(time.Since(start).Milliseconds())}, nil
 	}
 
-	return models.RunResult{
+	return &models.RunResult{
 		ExitCode:   parsed.ExitCode,
 		Stdout:     parsed.Stdout,
 		Stderr:     parsed.Stderr,
@@ -174,7 +174,7 @@ type ImageRef struct {
 	Tag        string
 }
 
-func (m *Manager) ensureImage(ctx context.Context, image string, _ models.Language) error {
+func (m *Manager) ensureImage(ctx context.Context, image string, _ string) error {
 	_, _, err := m.cli.ImageInspectWithRaw(ctx, image)
 	if err == nil {
 		return nil
@@ -193,7 +193,7 @@ func (m *Manager) ensureImage(ctx context.Context, image string, _ models.Langua
 	return nil
 }
 
-func imageAndFileFor(lang models.Language) (string, string) {
+func imageAndFileFor(lang string) (string, string) {
 	full := config.ImageFor(lang)
 	switch lang {
 	case models.LanguagePython:

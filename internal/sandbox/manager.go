@@ -25,5 +25,5 @@ type SandboxManager interface {
 	// - 参数非法：直接返回错误
 	// - 队列已满/被限流：应返回可识别的错误（上层可映射为 429）
 	// - 执行中断或超时：返回 context 错误
-	Run(ctx context.Context, req models.RunRequest) (models.RunResult, error)
+	Run(ctx context.Context, req *models.RunRequest) (*models.RunResult, error)
 }

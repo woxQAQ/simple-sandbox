@@ -19,13 +19,13 @@ type RuntimeConfig struct {
 	MaxQueue       int    `env:"SANDBOX_MAX_QUEUE" default:"32"`
 	ImageRegistry  string `env:"SANDBOX_IMAGE_REGISTRY" default:"docker.io"`
 	CRISocket      string `env:"SANDBOX_CRI_SOCKET" default:"unix:///run/containerd/containerd.sock"`
-	
+
 	// Registry authentication
 	RegistryUsername      string `env:"SANDBOX_REGISTRY_USERNAME"`
 	RegistryPassword      string `env:"SANDBOX_REGISTRY_PASSWORD"`
 	RegistryAuth          string `env:"SANDBOX_REGISTRY_AUTH"`
 	RegistryIdentityToken string `env:"SANDBOX_REGISTRY_IDENTITY_TOKEN"`
-	
+
 	// Kubernetes settings
 	K8sImagePullSecret string `env:"SANDBOX_K8S_IMAGE_PULL_SECRET"`
 }
@@ -37,20 +37,20 @@ func GetRuntimeConfig() *RuntimeConfig {
 	if runtimeConfig != nil {
 		return runtimeConfig
 	}
-	
+
 	runtimeConfig = &RuntimeConfig{
-		Backend:              getEnv("SANDBOX_BACKEND", "docker"),
-		MaxConcurrency:       getEnvInt("SANDBOX_MAX_CONCURRENCY", 4),
-		MaxQueue:            getEnvInt("SANDBOX_MAX_QUEUE", 32),
-		ImageRegistry:       getEnv("SANDBOX_IMAGE_REGISTRY", "docker.io"),
-		CRISocket:           getEnv("SANDBOX_CRI_SOCKET", "unix:///run/containerd/containerd.sock"),
-		RegistryUsername:     getEnv("SANDBOX_REGISTRY_USERNAME", ""),
-		RegistryPassword:     getEnv("SANDBOX_REGISTRY_PASSWORD", ""),
-		RegistryAuth:         getEnv("SANDBOX_REGISTRY_AUTH", ""),
+		Backend:               getEnv("SANDBOX_BACKEND", "docker"),
+		MaxConcurrency:        getEnvInt("SANDBOX_MAX_CONCURRENCY", 4),
+		MaxQueue:              getEnvInt("SANDBOX_MAX_QUEUE", 32),
+		ImageRegistry:         getEnv("SANDBOX_IMAGE_REGISTRY", "docker.io"),
+		CRISocket:             getEnv("SANDBOX_CRI_SOCKET", "unix:///run/containerd/containerd.sock"),
+		RegistryUsername:      getEnv("SANDBOX_REGISTRY_USERNAME", ""),
+		RegistryPassword:      getEnv("SANDBOX_REGISTRY_PASSWORD", ""),
+		RegistryAuth:          getEnv("SANDBOX_REGISTRY_AUTH", ""),
 		RegistryIdentityToken: getEnv("SANDBOX_REGISTRY_IDENTITY_TOKEN", ""),
-		K8sImagePullSecret:  getEnv("SANDBOX_K8S_IMAGE_PULL_SECRET", ""),
+		K8sImagePullSecret:    getEnv("SANDBOX_K8S_IMAGE_PULL_SECRET", ""),
 	}
-	
+
 	return runtimeConfig
 }
 
@@ -86,10 +86,10 @@ func Registry() string {
 
 // ImageRefFor returns the image reference for a given language.
 // Registry comes from runtime config, repository/tag from YAML config.
-func ImageRefFor(lang models.Language) ImageRef {
+func ImageRefFor(lang string) ImageRef {
 	registry := Registry()
 	ls := getLangSettings(lang)
-	
+
 	repo := ls.Repository
 	if repo == "" {
 		switch lang {
@@ -101,17 +101,17 @@ func ImageRefFor(lang models.Language) ImageRef {
 			repo = "sandbox-unknown"
 		}
 	}
-	
+
 	tag := ls.Tag
 	if tag == "" {
 		tag = "latest"
 	}
-	
+
 	return ImageRef{Registry: registry, Repository: repo, Tag: tag}
 }
 
 // ImageFor returns the full image reference string (registry/repository:tag) for a language.
-func ImageFor(lang models.Language) string {
+func ImageFor(lang string) string {
 	ref := ImageRefFor(lang)
 	return ref.Registry + "/" + ref.Repository + ":" + ref.Tag
 }
@@ -152,12 +152,12 @@ func DockerRegistryAuthHeader(info RegistryAuthInfo) (string, error) {
 		IdentityToken: info.IdentityToken,
 		ServerAddress: info.ServerAddress,
 	}
-	
+
 	data, err := json.Marshal(auth)
 	if err != nil {
 		return "", err
 	}
-	
+
 	return base64.URLEncoding.EncodeToString(data), nil
 }
 
@@ -193,7 +193,7 @@ func Init() error {
 	if path == "" {
 		path = "sandbox.yaml"
 	}
-	
+
 	data, err := os.ReadFile(path)
 	if err != nil {
 		if errors.Is(err, fs.ErrNotExist) {
@@ -202,16 +202,16 @@ func Init() error {
 		}
 		return err
 	}
-	
+
 	var cfg SandboxConfig
 	if err := yaml.Unmarshal(data, &cfg); err != nil {
 		return err
 	}
-	
+
 	if cfg.Languages == nil {
 		cfg.Languages = map[string]LanguageSettings{}
 	}
-	
+
 	yamlConfig = &cfg
 	return nil
 }
@@ -225,16 +225,16 @@ func GetYAMLConfig() *SandboxConfig {
 }
 
 // getLangSettings returns language settings from YAML configuration
-func getLangSettings(lang models.Language) LanguageSettings {
+func getLangSettings(lang string) LanguageSettings {
 	if yamlConfig == nil || yamlConfig.Languages == nil {
 		return LanguageSettings{}
 	}
-	
-	key := string(lang)
+
+	key := lang
 	if settings, ok := yamlConfig.Languages[key]; ok {
 		return settings
 	}
-	
+
 	return LanguageSettings{}
 }
 
@@ -245,7 +245,7 @@ type SeccompSetting struct {
 }
 
 // SeccompForCRI returns the CRI seccomp setting for the given language.
-func SeccompForCRI(lang models.Language) SeccompSetting {
+func SeccompForCRI(lang string) SeccompSetting {
 	settings := getLangSettings(lang)
 	mode := settings.Seccomp.CRIMode
 	if mode == "" {
@@ -258,7 +258,7 @@ func SeccompForCRI(lang models.Language) SeccompSetting {
 }
 
 // SeccompForK8s returns the K8s seccomp setting for the given language.
-func SeccompForK8s(lang models.Language) SeccompSetting {
+func SeccompForK8s(lang string) SeccompSetting {
 	settings := getLangSettings(lang)
 	mode := settings.Seccomp.K8sMode
 	if mode == "" {
