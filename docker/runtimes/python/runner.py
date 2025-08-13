@@ -5,9 +5,6 @@ import sys
 import traceback
 import base64
 
-# Ensure headless backend
-os.environ["MPLBACKEND"] = "Agg"
-
 stdout_buf = io.StringIO()
 stderr_buf = io.StringIO()
 
