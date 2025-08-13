@@ -20,8 +20,3 @@ func GetConfig() *Config {
 		Namespace:       "default", // Default namespace
 	}
 }
-
-// K8sImagePullSecret returns the imagePullSecret name used in Pod specs
-func (c *Config) K8sImagePullSecret() string {
-	return c.ImagePullSecret
-}

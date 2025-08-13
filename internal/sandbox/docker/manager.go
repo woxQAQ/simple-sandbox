@@ -36,10 +36,6 @@ func New() (*Manager, error) {
 }
 
 func (m *Manager) Run(ctx context.Context, req *models.RunRequest) (*models.RunResult, error) {
-	if err := req.Validate(); err != nil {
-		return nil, err
-	}
-
 	image, filename := imageAndFileFor(req.Language)
 	if err := m.ensureImage(ctx, image, req.Language); err != nil {
 		return nil, fmt.Errorf("ensure image: %w", err)
@@ -52,7 +48,7 @@ func (m *Manager) Run(ctx context.Context, req *models.RunRequest) (*models.RunR
 	defer os.RemoveAll(tmpDir)
 
 	codePath := filepath.Join(tmpDir, filename)
-	if err := os.WriteFile(codePath, []byte(req.Code), 0644); err != nil {
+	if err = os.WriteFile(codePath, []byte(req.Code), 0644); err != nil {
 		return nil, err
 	}
 
@@ -75,8 +71,19 @@ func (m *Manager) Run(ctx context.Context, req *models.RunRequest) (*models.RunR
 		SecurityOpt:    []string{constants.SecurityOptNoNewPrivileges, constants.SecurityOptSeccompPrefix + seccomppkg.For(req.Language)},
 		Mounts: []mount.Mount{
 			workspaceMount,
-			{Type: mount.TypeTmpfs, Target: constants.TmpDir, TmpfsOptions: &mount.TmpfsOptions{SizeBytes: tmpfsSize, Mode: tmpfsMode}},
-			{Type: mount.TypeTmpfs, Target: constants.DevShmDir, TmpfsOptions: &mount.TmpfsOptions{SizeBytes: int64(constants.DevShmSizeBytes), Mode: os.FileMode(constants.TmpfsModeStickyRW)}},
+			{
+				Type:         mount.TypeTmpfs,
+				Target:       constants.TmpDir,
+				TmpfsOptions: &mount.TmpfsOptions{SizeBytes: tmpfsSize, Mode: tmpfsMode},
+			},
+			{
+				Type:   mount.TypeTmpfs,
+				Target: constants.DevShmDir,
+				TmpfsOptions: &mount.TmpfsOptions{
+					SizeBytes: int64(constants.DevShmSizeBytes),
+					Mode:      os.FileMode(constants.TmpfsModeStickyRW),
+				},
+			},
 		},
 	}
 
@@ -97,7 +104,7 @@ func (m *Manager) Run(ctx context.Context, req *models.RunRequest) (*models.RunR
 	}()
 
 	start := time.Now()
-	if err := m.cli.ContainerStart(ctx, containerID, containerTypes.StartOptions{}); err != nil {
+	if err = m.cli.ContainerStart(ctx, containerID, containerTypes.StartOptions{}); err != nil {
 		return nil, err
 	}
 
@@ -110,7 +117,7 @@ func (m *Manager) Run(ctx context.Context, req *models.RunRequest) (*models.RunR
 	case <-ctxRun.Done():
 		_ = m.cli.ContainerKill(context.Background(), containerID, constants.KillSignal)
 		return nil, context.DeadlineExceeded
-	case err := <-errCh:
+	case err = <-errCh:
 		if err != nil {
 			return nil, err
 		}
@@ -156,7 +163,9 @@ func (m *Manager) ensureImage(ctx context.Context, image string, lang string) er
 	authInfo := dockerConfig.RegistryAuthFor(server)
 	authHeader, _ := authInfo.DockerRegistryAuthHeader()
 
-	pullReader, err := m.cli.ImagePull(ctx, image, imageTypes.PullOptions{RegistryAuth: authHeader})
+	pullReader, err := m.cli.ImagePull(ctx, image, imageTypes.PullOptions{
+		RegistryAuth: authHeader,
+	})
 	if err != nil {
 		return fmt.Errorf("pull image failed: %w", err)
 	}

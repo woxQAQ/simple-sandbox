@@ -44,23 +44,15 @@ func New() (*Manager, error) {
 	return &Manager{client: cs, namespace: "default"}, nil
 }
 
-type runnerJSON struct {
-	Stdout    string   `json:"stdout"`
-	Stderr    string   `json:"stderr"`
-	ImagesB64 []string `json:"images_b64"`
-	ExitCode  int      `json:"exit_code"`
-}
-
-func (m *Manager) Run(ctx context.Context, req *models.RunRequest) (*models.RunResult, error) {
-	if err := req.Validate(); err != nil {
-		return nil, err
-	}
-
+func (m *Manager) Run(
+	ctx context.Context,
+	req *models.RunRequest,
+) (*models.RunResult, error) {
 	ns := req.Namespace
 
 	k8sConfig := GetConfig()
 	image := common.ImageFor(req.Language)
-	pullSecret := k8sConfig.K8sImagePullSecret()
+	pullSecret := k8sConfig.ImagePullSecret
 
 	// Determine code key by language
 	codeKey := common.CodeFilenameForLanguage(req.Language)
@@ -73,11 +65,17 @@ func (m *Manager) Run(ctx context.Context, req *models.RunRequest) (*models.RunR
 		ObjectMeta: metav1.ObjectMeta{Name: cmName, Namespace: ns},
 		Data:       map[string]string{codeKey: req.Code},
 	}
-	if _, err := m.client.CoreV1().ConfigMaps(ns).Create(ctx, cm, metav1.CreateOptions{}); err != nil {
+	if _, err := m.client.
+		CoreV1().
+		ConfigMaps(ns).
+		Create(ctx, cm, metav1.CreateOptions{}); err != nil {
 		return nil, fmt.Errorf("create configmap: %w", err)
 	}
 	defer func() {
-		_ = m.client.CoreV1().ConfigMaps(ns).Delete(context.Background(), cmName, metav1.DeleteOptions{})
+		_ = m.client.
+			CoreV1().
+			ConfigMaps(ns).
+			Delete(context.Background(), cmName, metav1.DeleteOptions{})
 	}()
 
 	// Pod with default securityContext; tmpfs-like /tmp via emptyDir memory
@@ -104,17 +102,40 @@ func (m *Manager) Run(ctx context.Context, req *models.RunRequest) (*models.RunR
 				},
 			}},
 			Volumes: []corev1.Volume{
-				{Name: constants.K8sVolumeCode, VolumeSource: corev1.VolumeSource{ConfigMap: &corev1.ConfigMapVolumeSource{LocalObjectReference: corev1.LocalObjectReference{Name: cmName}}}},
-				{Name: constants.K8sVolumeTmp, VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{Medium: corev1.StorageMediumMemory}}},
-				{Name: constants.K8sVolumeDShm, VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{Medium: corev1.StorageMediumMemory}}},
+				{
+					Name: constants.K8sVolumeCode,
+					VolumeSource: corev1.VolumeSource{
+						ConfigMap: &corev1.ConfigMapVolumeSource{
+							LocalObjectReference: corev1.LocalObjectReference{Name: cmName},
+						},
+					},
+				},
+				{
+					Name: constants.K8sVolumeTmp,
+					VolumeSource: corev1.VolumeSource{
+						EmptyDir: &corev1.EmptyDirVolumeSource{Medium: corev1.StorageMediumMemory},
+					},
+				},
+				{
+					Name: constants.K8sVolumeDShm,
+					VolumeSource: corev1.VolumeSource{
+						EmptyDir: &corev1.EmptyDirVolumeSource{Medium: corev1.StorageMediumMemory},
+					},
+				},
 			},
 		},
 	}
-	if _, err := m.client.CoreV1().Pods(ns).Create(ctx, pod, metav1.CreateOptions{}); err != nil {
+	if _, err := m.client.
+		CoreV1().
+		Pods(ns).
+		Create(ctx, pod, metav1.CreateOptions{}); err != nil {
 		return nil, fmt.Errorf("create pod: %w", err)
 	}
 	defer func() {
-		_ = m.client.CoreV1().Pods(ns).Delete(context.Background(), podName, metav1.DeleteOptions{})
+		_ = m.client.
+			CoreV1().
+			Pods(ns).
+			Delete(context.Background(), podName, metav1.DeleteOptions{})
 	}()
 
 	// record start time from pod creation to completion
@@ -124,7 +145,10 @@ func (m *Manager) Run(ctx context.Context, req *models.RunRequest) (*models.RunR
 	defer cancel()
 	// wait for completion
 	err := wait.PollUntilContextCancel(ctxW, time.Duration(constants.K8sPollIntervalMs)*time.Millisecond, true, func(ctx context.Context) (done bool, err error) {
-		p, err := m.client.CoreV1().Pods(ns).Get(ctx, podName, metav1.GetOptions{})
+		p, err := m.client.
+			CoreV1().
+			Pods(ns).
+			Get(ctx, podName, metav1.GetOptions{})
 		if err != nil {
 			return false, nil
 		}
@@ -139,7 +163,12 @@ func (m *Manager) Run(ctx context.Context, req *models.RunRequest) (*models.RunR
 	}
 
 	// fetch logs
-	reqLog := m.client.CoreV1().Pods(ns).GetLogs(podName, &corev1.PodLogOptions{Container: "runner"})
+	reqLog := m.client.
+		CoreV1().
+		Pods(ns).
+		GetLogs(podName, &corev1.PodLogOptions{
+			Container: "runner",
+		})
 	stream, err := reqLog.Stream(context.Background())
 	if err != nil {
 		return nil, fmt.Errorf("pod logs: %w", err)
@@ -152,9 +181,19 @@ func (m *Manager) Run(ctx context.Context, req *models.RunRequest) (*models.RunR
 
 	parsed, perr := common.ParseRunnerJSONFromBytes(buf.Bytes())
 	if perr != nil {
-		return &models.RunResult{ExitCode: -1, Stdout: buf.String(), DurationMs: int(time.Since(start).Milliseconds())}, nil
+		return &models.RunResult{
+			ExitCode:   -1,
+			Stdout:     buf.String(),
+			DurationMs: int(time.Since(start).Milliseconds()),
+		}, nil
 	}
-	return &models.RunResult{ExitCode: parsed.ExitCode, Stdout: parsed.Stdout, Stderr: parsed.Stderr, ImagesB64: parsed.ImagesB64, DurationMs: int(time.Since(start).Milliseconds())}, nil
+	return &models.RunResult{
+		ExitCode:   parsed.ExitCode,
+		Stdout:     parsed.Stdout,
+		Stderr:     parsed.Stderr,
+		ImagesB64:  parsed.ImagesB64,
+		DurationMs: int(time.Since(start).Milliseconds()),
+	}, nil
 }
 
 func randHex(n int) string {
