@@ -4,7 +4,7 @@ WORKDIR /src
 COPY . .
 RUN --mount=type=cache,target=/go/pkg/mod \
     --mount=type=cache,target=/root/.cache/go-build \
-    CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o /out/sandboxd ./cmd/sandboxd
+    CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o /out/sandboxd -ldflags "-s -w" ./cmd/sandboxd
 
 FROM gcr.io/distroless/static:nonroot
 USER nonroot:nonroot
