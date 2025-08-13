@@ -5,7 +5,6 @@ import (
 
 	"github.com/woxqaq/simple-sandbox/internal/config"
 	"github.com/woxqaq/simple-sandbox/internal/constants"
-	crimgr "github.com/woxqaq/simple-sandbox/internal/sandbox/cri"
 	dockermgr "github.com/woxqaq/simple-sandbox/internal/sandbox/docker"
 	k8smgr "github.com/woxqaq/simple-sandbox/internal/sandbox/k8s"
 )
@@ -19,8 +18,6 @@ func NewFromEnv() (SandboxManager, error) {
 	switch b {
 	case constants.BackendDocker:
 		return dockermgr.New()
-	case constants.BackendCRI:
-		return crimgr.New()
 	case constants.BackendK8s:
 		return k8smgr.New()
 	default:

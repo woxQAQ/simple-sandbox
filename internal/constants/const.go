@@ -3,8 +3,8 @@ package constants
 // Backends
 const (
 	BackendDocker = "docker"
-	BackendCRI    = "cri"
-	BackendK8s    = "k8s"
+
+	BackendK8s = "k8s"
 )
 
 // Images and registries
@@ -44,13 +44,6 @@ const (
 	SandboxEnvVal = "1"
 )
 
-// CRI defaults
-const (
-	DefaultCRISocket  = "unix:///var/run/containerd/containerd.sock"
-	CRILogFileName    = "container.log"
-	CRIPollIntervalMs = 200
-)
-
 // K8s defaults
 const (
 	K8sDefaultNamespace  = "default"
@@ -63,11 +56,7 @@ const (
 	K8sPodNamePref       = "sb-pod-"
 )
 
-// Naming prefixes for CRI
-const (
-	CRIPodSandboxNamePref = "sandbox-ps-"
-	CRIContainerNamePref  = "sandbox-ct-"
-)
+//
 
 // Timeouts
 const (

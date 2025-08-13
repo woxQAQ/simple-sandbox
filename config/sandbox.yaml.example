@@ -3,7 +3,7 @@
 
 # Runtime configuration (formerly environment variables)
 runtime:
-  # Container backend: docker, k8s, cri
+  # Container backend: docker, k8s
   backend: "docker"
   
   # Concurrency settings
@@ -12,7 +12,6 @@ runtime:
   
   # Container registry settings
   image_registry: "docker.io"
-  cri_socket: "unix:///run/containerd/containerd.sock"
   
   # Registry authentication (optional)
   registry_username: ""
@@ -30,8 +29,6 @@ languages:
     tag: "latest"
     registry: ""
     seccomp:
-      cri_mode: "runtimeDefault"
-      cri_localhost_ref: ""
       k8s_mode: "runtimeDefault"
       k8s_localhost_ref: ""
   
@@ -40,7 +37,5 @@ languages:
     tag: "latest"
     registry: ""
     seccomp:
-      cri_mode: "runtimeDefault"
-      cri_localhost_ref: ""
       k8s_mode: "runtimeDefault"
       k8s_localhost_ref: ""

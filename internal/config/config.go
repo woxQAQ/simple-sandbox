@@ -14,7 +14,6 @@ type RuntimeConfig struct {
 	MaxConcurrency int    `yaml:"max_concurrency"`
 	MaxQueue       int    `yaml:"max_queue"`
 	ImageRegistry  string `yaml:"image_registry"`
-	CRISocket      string `yaml:"cri_socket"`
 
 	// Registry authentication
 	RegistryUsername      string `yaml:"registry_username"`
@@ -26,11 +25,8 @@ type RuntimeConfig struct {
 	K8sImagePullSecret string `yaml:"k8s_image_pull_secret"`
 }
 
-
 // YAML Configuration structures
 type SeccompLangConfig struct {
-	CRIMode         string `yaml:"cri_mode"`
-	CRILocalhostRef string `yaml:"cri_localhost_ref"`
 	K8sMode         string `yaml:"k8s_mode"`
 	K8sLocalhostRef string `yaml:"k8s_localhost_ref"`
 }
@@ -44,7 +40,7 @@ type LanguageSettings struct {
 
 // SandboxConfig holds all YAML-based application configurations
 type SandboxConfig struct {
-	Runtime   RuntimeConfig   `yaml:"runtime"`
+	Runtime   RuntimeConfig               `yaml:"runtime"`
 	Languages map[string]LanguageSettings `yaml:"languages"`
 }
 
@@ -92,4 +88,3 @@ func GetYAMLConfig() *SandboxConfig {
 	}
 	return yamlConfig
 }
-
