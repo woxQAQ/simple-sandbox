@@ -1,4 +1,3 @@
-# syntax=docker/dockerfile:1
 FROM golang:1.24-alpine AS build
 WORKDIR /src
 COPY . .
@@ -9,5 +8,6 @@ RUN --mount=type=cache,target=/go/pkg/mod \
 FROM gcr.io/distroless/static:nonroot
 USER nonroot:nonroot
 COPY --from=build /out/sandboxd /sandboxd
+COPY --from=build /src/config/sandbox.yaml.example /sandbox.yaml
 EXPOSE 8080
-ENTRYPOINT ["/sandboxd","-addr",":8080"] 
+ENTRYPOINT ["/sandboxd","-addr",":8080"]
