@@ -138,14 +138,14 @@ func (m *Manager) Run(ctx context.Context, req *models.RunRequest) (*models.RunR
 	parsed, parseErr := common.ParseRunnerJSONFromBytes(buf.Bytes())
 	if parseErr != nil {
 		logging.Logger.Warn("failed to parse runner json, returning raw logs", zap.Error(parseErr))
-		return &models.RunResult{ExitCode: -1, Stdout: buf.String(), Stderr: "", ImagesB64: nil, DurationMs: int(time.Since(start).Milliseconds())}, nil
+		return &models.RunResult{ExitCode: -1, Stdout: buf.String(), Stderr: "", Artifacts: nil, DurationMs: int(time.Since(start).Milliseconds())}, nil
 	}
 
 	return &models.RunResult{
 		ExitCode:   parsed.ExitCode,
 		Stdout:     parsed.Stdout,
 		Stderr:     parsed.Stderr,
-		ImagesB64:  parsed.ImagesB64,
+		Artifacts:  parsed.Artifacts,
 		DurationMs: int(time.Since(start).Milliseconds()),
 	}, nil
 }

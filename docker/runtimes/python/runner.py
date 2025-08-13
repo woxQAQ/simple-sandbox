@@ -17,7 +17,7 @@ sys.stdout = stdout_buf
 sys.stderr = stderr_buf
 
 exit_code = 0
-images = []
+artifacts = []
 
 try:
     code_path = os.path.join("/workspace", "main.py")
@@ -37,11 +37,19 @@ try:
         try:
             from matplotlib._pylab_helpers import Gcf
             figs = [fm.canvas.figure for fm in Gcf.get_all_fig_managers()]
-            for fig in figs:
+            for i, fig in enumerate(figs):
                 buf = io.BytesIO()
                 fig.savefig(buf, format="png", bbox_inches="tight")
                 buf.seek(0)
-                images.append(base64.b64encode(buf.read()).decode("ascii"))
+                artifact = {
+                    "type": "image",
+                    "data": base64.b64encode(buf.read()).decode("ascii"),
+                    "metadata": {
+                        "format": "png",
+                        "index": str(i)
+                    }
+                }
+                artifacts.append(artifact)
                 plt.close(fig)
         except Exception:
             # do not crash if capture fails
@@ -61,8 +69,8 @@ finally:
 result = {
     "stdout": stdout_buf.getvalue(),
     "stderr": stderr_buf.getvalue(),
-    "images_b64": images,
+    "artifacts": artifacts,
     "exit_code": exit_code,
 }
 
-print(json.dumps(result)) 
+print(json.dumps(result))

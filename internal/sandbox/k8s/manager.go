@@ -191,7 +191,7 @@ func (m *Manager) Run(
 		ExitCode:   parsed.ExitCode,
 		Stdout:     parsed.Stdout,
 		Stderr:     parsed.Stderr,
-		ImagesB64:  parsed.ImagesB64,
+		Artifacts:  parsed.Artifacts,
 		DurationMs: int(time.Since(start).Milliseconds()),
 	}, nil
 }

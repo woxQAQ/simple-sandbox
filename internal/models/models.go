@@ -18,12 +18,18 @@ type RunRequest struct {
 	Namespace   string `json:"namespace"`
 }
 
+type Artifact struct {
+	Type     string            `json:"type"`     // "image", "file", etc.
+	Data     string            `json:"data"`     // Base64 encoded data
+	Metadata map[string]string `json:"metadata,omitempty"`
+}
+
 type RunResult struct {
-	ExitCode   int      `json:"exit_code"`
-	Stdout     string   `json:"stdout"`
-	Stderr     string   `json:"stderr"`
-	ImagesB64  []string `json:"images_b64"`
-	DurationMs int      `json:"duration_ms"`
+	ExitCode   int        `json:"exit_code"`
+	Stdout     string     `json:"stdout"`
+	Stderr     string     `json:"stderr"`
+	Artifacts  []Artifact `json:"artifacts,omitempty"`
+	DurationMs int        `json:"duration_ms"`
 }
 
 func (r *RunRequest) Validate() error {

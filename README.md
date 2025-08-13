@@ -96,7 +96,7 @@ curl -X POST http://localhost:8080/v1/run \
   "exit_code": 0,
   "stdout": "Hello, World!\n",
   "stderr": "",
-  "images_b64": [],
+  "artifacts": [],
   "duration_ms": 234
 }
 ```

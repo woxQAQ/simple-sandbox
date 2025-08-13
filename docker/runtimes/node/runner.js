@@ -14,7 +14,7 @@ function run() {
     child.stderr.on('data', (d) => { err += d.toString(); });
 
     child.on('close', (code) => {
-      resolve({ stdout: out, stderr: err, exit_code: code || 0, images_b64: [] });
+      resolve({ stdout: out, stderr: err, exit_code: code || 0, artifacts: [] });
     });
   });
 }
@@ -22,4 +22,4 @@ function run() {
 (async () => {
   const res = await run();
   process.stdout.write(JSON.stringify(res));
-})(); 
+})();

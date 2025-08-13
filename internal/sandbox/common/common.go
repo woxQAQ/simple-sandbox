@@ -12,10 +12,10 @@ import (
 
 // RunnerJSON is the standard JSON payload produced by the in-container runner.
 type RunnerJSON struct {
-	Stdout    string   `json:"stdout"`
-	Stderr    string   `json:"stderr"`
-	ImagesB64 []string `json:"images_b64"`
-	ExitCode  int      `json:"exit_code"`
+	Stdout    string              `json:"stdout"`
+	Stderr    string              `json:"stderr"`
+	Artifacts []models.Artifact   `json:"artifacts,omitempty"`
+	ExitCode  int                 `json:"exit_code"`
 }
 
 // ParseRunnerJSONFromBytes parses the last JSON object from raw logs into RunnerJSON.
