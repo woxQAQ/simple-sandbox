@@ -7,6 +7,7 @@ import (
 	"github.com/woxqaq/simple-sandbox/internal/constants"
 	dockermgr "github.com/woxqaq/simple-sandbox/internal/sandbox/docker"
 	k8smgr "github.com/woxqaq/simple-sandbox/internal/sandbox/k8s"
+	podmanmgr "github.com/woxqaq/simple-sandbox/internal/sandbox/podman"
 )
 
 func NewFromEnv() (SandboxManager, error) {
@@ -18,6 +19,8 @@ func NewFromEnv() (SandboxManager, error) {
 	switch b {
 	case constants.BackendDocker:
 		return dockermgr.New()
+	case constants.BackendPodman:
+		return podmanmgr.New()
 	case constants.BackendK8s:
 		return k8smgr.New()
 	default:

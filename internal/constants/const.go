@@ -3,7 +3,7 @@ package constants
 // Backends
 const (
 	BackendDocker = "docker"
-
+	BackendPodman = "podman"
 	BackendK8s = "k8s"
 )
 
