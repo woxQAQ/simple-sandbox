@@ -38,6 +38,7 @@ type SeccompLangConfig struct {
 type LanguageSettings struct {
 	Repository string            `yaml:"repository"`
 	Tag        string            `yaml:"tag"`
+	Registry   string            `yaml:"registry"`
 	Seccomp    SeccompLangConfig `yaml:"seccomp"`
 }
 

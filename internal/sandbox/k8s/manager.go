@@ -5,7 +5,6 @@ import (
 	"context"
 	"crypto/rand"
 	"encoding/hex"
-	"encoding/json"
 	"fmt"
 	"io"
 	"time"
@@ -17,7 +16,9 @@ import (
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
 
+	"github.com/woxqaq/simple-sandbox/internal/constants"
 	"github.com/woxqaq/simple-sandbox/internal/models"
+	"github.com/woxqaq/simple-sandbox/internal/sandbox/common"
 )
 
 type Manager struct {
@@ -58,21 +59,15 @@ func (m *Manager) Run(ctx context.Context, req *models.RunRequest) (*models.RunR
 	ns := req.Namespace
 
 	k8sConfig := GetConfig()
-	image := k8sConfig.ImageFor(req.Language)
+	image := common.ImageFor(req.Language)
 	pullSecret := k8sConfig.K8sImagePullSecret()
 
 	// Determine code key by language
-	codeKey := "main"
-	switch req.Language {
-	case models.LanguagePython:
-		codeKey = "main.py"
-	case models.LanguageNode:
-		codeKey = "main.js"
-	}
+	codeKey := common.CodeFilenameForLanguage(req.Language)
 
 	suffix := randHex(6)
-	cmName := "sb-code-" + suffix
-	podName := "sb-pod-" + suffix
+	cmName := constants.K8sConfigMapNamePref + suffix
+	podName := constants.K8sPodNamePref + suffix
 
 	cm := &corev1.ConfigMap{
 		ObjectMeta: metav1.ObjectMeta{Name: cmName, Namespace: ns},
@@ -98,20 +93,20 @@ func (m *Manager) Run(ctx context.Context, req *models.RunRequest) (*models.RunR
 				return []corev1.LocalObjectReference{{Name: pullSecret}}
 			}(),
 			Containers: []corev1.Container{{
-				Name:       "runner",
+				Name:       constants.K8sRunnerContainer,
 				Image:      image,
-				WorkingDir: "/workspace",
-				Env:        []corev1.EnvVar{{Name: "SANDBOX", Value: "1"}},
+				WorkingDir: constants.WorkspaceDir,
+				Env:        []corev1.EnvVar{{Name: constants.SandboxEnvKey, Value: constants.SandboxEnvVal}},
 				VolumeMounts: []corev1.VolumeMount{
-					{Name: "code", MountPath: "/workspace", ReadOnly: true},
-					{Name: "tmp", MountPath: "/tmp"},
-					{Name: "dshm", MountPath: "/dev/shm"},
+					{Name: constants.K8sVolumeCode, MountPath: constants.WorkspaceDir, ReadOnly: true},
+					{Name: constants.K8sVolumeTmp, MountPath: constants.TmpDir},
+					{Name: constants.K8sVolumeDShm, MountPath: constants.DevShmDir},
 				},
 			}},
 			Volumes: []corev1.Volume{
-				{Name: "code", VolumeSource: corev1.VolumeSource{ConfigMap: &corev1.ConfigMapVolumeSource{LocalObjectReference: corev1.LocalObjectReference{Name: cmName}}}},
-				{Name: "tmp", VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{Medium: corev1.StorageMediumMemory}}},
-				{Name: "dshm", VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{Medium: corev1.StorageMediumMemory}}},
+				{Name: constants.K8sVolumeCode, VolumeSource: corev1.VolumeSource{ConfigMap: &corev1.ConfigMapVolumeSource{LocalObjectReference: corev1.LocalObjectReference{Name: cmName}}}},
+				{Name: constants.K8sVolumeTmp, VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{Medium: corev1.StorageMediumMemory}}},
+				{Name: constants.K8sVolumeDShm, VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{Medium: corev1.StorageMediumMemory}}},
 			},
 		},
 	}
@@ -122,11 +117,13 @@ func (m *Manager) Run(ctx context.Context, req *models.RunRequest) (*models.RunR
 		_ = m.client.CoreV1().Pods(ns).Delete(context.Background(), podName, metav1.DeleteOptions{})
 	}()
 
-	deadline := time.Duration(req.TimeLimitMs+2000) * time.Millisecond
+	// record start time from pod creation to completion
+	start := time.Now()
+	deadline := time.Duration(req.TimeLimitMs+constants.TimeLimitGraceMs) * time.Millisecond
 	ctxW, cancel := context.WithTimeout(ctx, deadline)
 	defer cancel()
 	// wait for completion
-	err := wait.PollUntilContextCancel(ctxW, 500*time.Millisecond, true, func(ctx context.Context) (done bool, err error) {
+	err := wait.PollUntilContextCancel(ctxW, time.Duration(constants.K8sPollIntervalMs)*time.Millisecond, true, func(ctx context.Context) (done bool, err error) {
 		p, err := m.client.CoreV1().Pods(ns).Get(ctx, podName, metav1.GetOptions{})
 		if err != nil {
 			return false, nil
@@ -153,12 +150,11 @@ func (m *Manager) Run(ctx context.Context, req *models.RunRequest) (*models.RunR
 		return nil, err
 	}
 
-	var r runnerJSON
-	idx := bytes.LastIndexByte(buf.Bytes(), '{')
-	if idx >= 0 {
-		_ = json.Unmarshal(buf.Bytes()[idx:], &r)
+	parsed, perr := common.ParseRunnerJSONFromBytes(buf.Bytes())
+	if perr != nil {
+		return &models.RunResult{ExitCode: -1, Stdout: buf.String(), DurationMs: int(time.Since(start).Milliseconds())}, nil
 	}
-	return &models.RunResult{ExitCode: r.ExitCode, Stdout: r.Stdout, Stderr: r.Stderr, ImagesB64: r.ImagesB64}, nil
+	return &models.RunResult{ExitCode: parsed.ExitCode, Stdout: parsed.Stdout, Stderr: parsed.Stderr, ImagesB64: parsed.ImagesB64, DurationMs: int(time.Since(start).Milliseconds())}, nil
 }
 
 func randHex(n int) string {

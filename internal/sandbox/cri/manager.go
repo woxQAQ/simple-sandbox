@@ -5,7 +5,6 @@ import (
 	"context"
 	"crypto/rand"
 	"encoding/hex"
-	"encoding/json"
 	"fmt"
 	"io"
 	"net"
@@ -17,7 +16,9 @@ import (
 	"google.golang.org/grpc/credentials/insecure"
 	runtimeapi "k8s.io/cri-api/pkg/apis/runtime/v1"
 
+	"github.com/woxqaq/simple-sandbox/internal/constants"
 	"github.com/woxqaq/simple-sandbox/internal/models"
+	"github.com/woxqaq/simple-sandbox/internal/sandbox/common"
 )
 
 type Manager struct {
@@ -30,7 +31,7 @@ func New() (*Manager, error) {
 	criConfig := GetConfig()
 	sock := criConfig.Socket
 	if sock == "" {
-		sock = "unix:///var/run/containerd/containerd.sock"
+		sock = constants.DefaultCRISocket
 	}
 	conn, err := grpc.NewClient(
 		sock,
@@ -49,34 +50,17 @@ func New() (*Manager, error) {
 	}, nil
 }
 
-type runnerJSON struct {
-	Stdout    string   `json:"stdout"`
-	Stderr    string   `json:"stderr"`
-	ImagesB64 []string `json:"images_b64"`
-	ExitCode  int      `json:"exit_code"`
-}
-
 func (m *Manager) Run(ctx context.Context, req *models.RunRequest) (*models.RunResult, error) {
 	if err := req.Validate(); err != nil {
 		return nil, err
 	}
 
 	criConfig := GetConfig()
-	ref := criConfig.ImageRefFor(req.Language)
-	image := criConfig.ImageFor(req.Language)
+	ref := common.ImageRefFor(req.Language)
+	image := ref.String()
 
-	// ensure image
-	authInfo := criConfig.RegistryAuthFor(ref.Registry)
+	// ensure image (no registry auth; rely on CRI/node pre-configured credentials)
 	pullReq := &runtimeapi.PullImageRequest{Image: &runtimeapi.ImageSpec{Image: image}}
-	if authInfo.Username != "" || authInfo.IdentityToken != "" || authInfo.Auth != "" {
-		pullReq.Auth = &runtimeapi.AuthConfig{
-			Username:      authInfo.Username,
-			Password:      authInfo.Password,
-			Auth:          authInfo.Auth,
-			IdentityToken: authInfo.IdentityToken,
-			ServerAddress: authInfo.ServerAddress,
-		}
-	}
 	_, err := m.images.PullImage(ctx, pullReq)
 	if err != nil {
 		return nil, fmt.Errorf("pull image: %w", err)
@@ -88,21 +72,15 @@ func (m *Manager) Run(ctx context.Context, req *models.RunRequest) (*models.RunR
 		return nil, err
 	}
 	defer os.RemoveAll(ws)
-	codeFile := "main"
-	switch req.Language {
-	case models.LanguagePython:
-		codeFile = "main.py"
-	case models.LanguageNode:
-		codeFile = "main.js"
-	}
+	codeFile := common.CodeFilenameForLanguage(req.Language)
 	if err := os.WriteFile(filepath.Join(ws, codeFile), []byte(req.Code), 0644); err != nil {
 		return nil, err
 	}
 
 	// names
 	nameSuffix := randHex(6)
-	sandboxName := "sandbox-ps-" + nameSuffix
-	containerName := "sandbox-ct-" + nameSuffix
+	sandboxName := constants.CRIPodSandboxNamePref + nameSuffix
+	containerName := constants.CRIContainerNamePref + nameSuffix
 
 	// pod sandbox with log directory
 	podCfg := &runtimeapi.PodSandboxConfig{
@@ -129,7 +107,7 @@ func (m *Manager) Run(ctx context.Context, req *models.RunRequest) (*models.RunR
 	// container config
 	mem := int64(req.MemoryMB) * 1024 * 1024
 	cpuShares := int64(req.CPUShares)
-	logPath := "container.log"
+	logPath := constants.CRILogFileName
 	sec := criConfig.SeccompForCRI(req.Language)
 	linuxCtx := &runtimeapi.LinuxContainerSecurityContext{
 		RunAsUser:      &runtimeapi.Int64Value{Value: 1000},
@@ -208,24 +186,15 @@ func (m *Manager) Run(ctx context.Context, req *models.RunRequest) (*models.RunR
 		return nil, err
 	}
 
-	parsed, perr := parseRunnerJSON(buf.Bytes())
+	started := time.Now()
+	parsed, perr := common.ParseRunnerJSONFromBytes(buf.Bytes())
 	if perr != nil {
-		return &models.RunResult{ExitCode: -1, Stdout: buf.String()}, nil
+		return &models.RunResult{ExitCode: -1, Stdout: buf.String(), DurationMs: int(time.Since(started).Milliseconds())}, nil
 	}
-	return &models.RunResult{ExitCode: parsed.ExitCode, Stdout: parsed.Stdout, Stderr: parsed.Stderr, ImagesB64: parsed.ImagesB64}, nil
+	return &models.RunResult{ExitCode: parsed.ExitCode, Stdout: parsed.Stdout, Stderr: parsed.Stderr, ImagesB64: parsed.ImagesB64, DurationMs: int(time.Since(started).Milliseconds())}, nil
 }
 
-func parseRunnerJSON(raw []byte) (runnerJSON, error) {
-	idx := bytes.LastIndexByte(raw, '{')
-	if idx < 0 {
-		return runnerJSON{}, fmt.Errorf("no json")
-	}
-	var r runnerJSON
-	if err := json.Unmarshal(raw[idx:], &r); err != nil {
-		return runnerJSON{}, err
-	}
-	return r, nil
-}
+// Runner output parsing is centralized in common.ParseRunnerJSONFromBytes.
 
 func randHex(n int) string {
 	b := make([]byte, n)

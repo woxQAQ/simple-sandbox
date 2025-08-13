@@ -28,15 +28,17 @@ languages:
   python:
     repository: "sandbox-python"
     tag: "latest"
+    registry: ""
     seccomp:
       cri_mode: "runtimeDefault"
       cri_localhost_ref: ""
       k8s_mode: "runtimeDefault"
       k8s_localhost_ref: ""
   
-  nodejs:
+  node:
     repository: "sandbox-node"
     tag: "latest"
+    registry: ""
     seccomp:
       cri_mode: "runtimeDefault"
       cri_localhost_ref: ""

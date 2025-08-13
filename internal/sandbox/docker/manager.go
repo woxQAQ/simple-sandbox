@@ -3,8 +3,6 @@ package docker
 import (
 	"bytes"
 	"context"
-	"encoding/json"
-	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -16,8 +14,10 @@ import (
 	imageTypes "github.com/docker/docker/api/types/image"
 	"github.com/docker/docker/api/types/mount"
 	"github.com/docker/docker/client"
+	"github.com/woxqaq/simple-sandbox/internal/constants"
 	"github.com/woxqaq/simple-sandbox/internal/logging"
 	"github.com/woxqaq/simple-sandbox/internal/models"
+	"github.com/woxqaq/simple-sandbox/internal/sandbox/common"
 	seccomppkg "github.com/woxqaq/simple-sandbox/internal/security/seccomp"
 	"go.uber.org/zap"
 )
@@ -32,13 +32,6 @@ func New() (*Manager, error) {
 		return nil, err
 	}
 	return &Manager{cli: cli}, nil
-}
-
-type runnerJSON struct {
-	Stdout    string   `json:"stdout"`
-	Stderr    string   `json:"stderr"`
-	ImagesB64 []string `json:"images_b64"`
-	ExitCode  int      `json:"exit_code"`
 }
 
 func (m *Manager) Run(ctx context.Context, req *models.RunRequest) (*models.RunResult, error) {
@@ -64,9 +57,9 @@ func (m *Manager) Run(ctx context.Context, req *models.RunRequest) (*models.RunR
 
 	workspaceMount := mount.Mount{Type: mount.TypeBind, Source: tmpDir, Target: "/workspace", ReadOnly: true}
 
-	pids := int64(128)
-	tmpfsSize := int64(64 * 1024 * 1024)
-	tmpfsMode := os.FileMode(01777)
+	pids := int64(constants.DefaultPidsLimit)
+	tmpfsSize := int64(constants.TmpfsSizeBytes)
+	tmpfsMode := os.FileMode(constants.TmpfsModeStickyRW)
 
 	// Security + resource limits
 	hostCfg := &containerTypes.HostConfig{
@@ -77,20 +70,20 @@ func (m *Manager) Run(ctx context.Context, req *models.RunRequest) (*models.RunR
 			OomKillDisable: func(b bool) *bool { return &b }(false),
 		},
 		ReadonlyRootfs: true,
-		CapDrop:        []string{"ALL"},
-		SecurityOpt:    []string{"no-new-privileges", "seccomp=" + seccomppkg.For(req.Language)},
+		CapDrop:        []string{constants.CapDropAll},
+		SecurityOpt:    []string{constants.SecurityOptNoNewPrivileges, constants.SecurityOptSeccompPrefix + seccomppkg.For(req.Language)},
 		Mounts: []mount.Mount{
 			workspaceMount,
-			{Type: mount.TypeTmpfs, Target: "/tmp", TmpfsOptions: &mount.TmpfsOptions{SizeBytes: tmpfsSize, Mode: tmpfsMode}},
-			{Type: mount.TypeTmpfs, Target: "/dev/shm", TmpfsOptions: &mount.TmpfsOptions{SizeBytes: int64(8 * 1024 * 1024), Mode: os.FileMode(01777)}},
+			{Type: mount.TypeTmpfs, Target: constants.TmpDir, TmpfsOptions: &mount.TmpfsOptions{SizeBytes: tmpfsSize, Mode: tmpfsMode}},
+			{Type: mount.TypeTmpfs, Target: constants.DevShmDir, TmpfsOptions: &mount.TmpfsOptions{SizeBytes: int64(constants.DevShmSizeBytes), Mode: os.FileMode(constants.TmpfsModeStickyRW)}},
 		},
 	}
 
 	cfg := &containerTypes.Config{
 		Image:           image,
-		WorkingDir:      "/workspace",
+		WorkingDir:      constants.WorkspaceDir,
 		NetworkDisabled: true,
-		Env:             []string{"SANDBOX=1"},
+		Env:             []string{constants.SandboxEnvKey + "=" + constants.SandboxEnvVal},
 	}
 
 	created, err := m.cli.ContainerCreate(ctx, cfg, hostCfg, nil, nil, "")
@@ -107,14 +100,14 @@ func (m *Manager) Run(ctx context.Context, req *models.RunRequest) (*models.RunR
 		return nil, err
 	}
 
-	// enforce time limit
+	// Enforce time limit by wrapping ContainerWait with a context timeout
 	ctxRun, cancel := context.WithTimeout(ctx, time.Duration(req.TimeLimitMs)*time.Millisecond)
 	defer cancel()
 	doneCh, errCh := m.cli.ContainerWait(ctxRun, containerID, containerTypes.WaitConditionNotRunning)
 
 	select {
 	case <-ctxRun.Done():
-		_ = m.cli.ContainerKill(context.Background(), containerID, "KILL")
+		_ = m.cli.ContainerKill(context.Background(), containerID, constants.KillSignal)
 		return nil, context.DeadlineExceeded
 	case err := <-errCh:
 		if err != nil {
@@ -134,7 +127,7 @@ func (m *Manager) Run(ctx context.Context, req *models.RunRequest) (*models.RunR
 		return nil, err
 	}
 
-	parsed, parseErr := parseRunnerJSON(buf.Bytes())
+	parsed, parseErr := common.ParseRunnerJSONFromBytes(buf.Bytes())
 	if parseErr != nil {
 		logging.Logger.Warn("failed to parse runner json, returning raw logs", zap.Error(parseErr))
 		return &models.RunResult{ExitCode: -1, Stdout: buf.String(), Stderr: "", ImagesB64: nil, DurationMs: int(time.Since(start).Milliseconds())}, nil
@@ -149,22 +142,6 @@ func (m *Manager) Run(ctx context.Context, req *models.RunRequest) (*models.RunR
 	}, nil
 }
 
-func parseRunnerJSON(raw []byte) (runnerJSON, error) {
-	// Docker logs are multiplexed with headers if not using TTY; client usually decodes, but ensure we get pure payload lines
-	// Attempt to find last balanced JSON object in the stream
-	text := string(raw)
-	idx := strings.LastIndex(text, "{")
-	if idx == -1 {
-		return runnerJSON{}, errors.New("no json found")
-	}
-	snippet := text[idx:]
-	var r runnerJSON
-	if err := json.Unmarshal([]byte(snippet), &r); err != nil {
-		return runnerJSON{}, err
-	}
-	return r, nil
-}
-
 func (m *Manager) ensureImage(ctx context.Context, image string, lang string) error {
 	_, _, err := m.cli.ImageInspectWithRaw(ctx, image)
 	if err == nil {
@@ -176,7 +153,7 @@ func (m *Manager) ensureImage(ctx context.Context, image string, lang string) er
 	refParts := strings.SplitN(image, "/", 2)
 	server := refParts[0]
 	authInfo := dockerConfig.RegistryAuthFor(server)
-	authHeader, _ := dockerConfig.DockerRegistryAuthHeader(authInfo)
+	authHeader, _ := authInfo.DockerRegistryAuthHeader()
 
 	pullReader, err := m.cli.ImagePull(ctx, image, imageTypes.PullOptions{RegistryAuth: authHeader})
 	if err != nil {
@@ -188,8 +165,7 @@ func (m *Manager) ensureImage(ctx context.Context, image string, lang string) er
 }
 
 func imageAndFileFor(lang string) (string, string) {
-	dockerConfig := GetConfig()
-	full := dockerConfig.ImageFor(lang)
+	full := common.ImageFor(lang)
 	switch lang {
 	case models.LanguagePython:
 		return full, "main.py"

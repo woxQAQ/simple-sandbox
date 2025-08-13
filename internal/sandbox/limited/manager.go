@@ -7,7 +7,7 @@ import (
 	"github.com/woxqaq/simple-sandbox/internal/sandbox"
 )
 
-// 队列实现为带缓冲 channel；当队列已满时将阻塞等待，直到有空位或 ctx 取消
+// QueueingManager provides bounded queuing and fixed-size worker concurrency.
 
 type job struct {
 	ctx  context.Context
@@ -38,9 +38,9 @@ func NewQueueingManager(inner sandbox.SandboxManager, maxConcurrent int, maxQueu
 
 func (q *QueueingManager) Run(ctx context.Context, req *models.RunRequest) (*models.RunResult, error) {
 	resC := make(chan result, 1)
-	// 复制请求，避免调用方后续修改产生数据竞争
+	// Copy request to avoid data races if caller mutates after enqueue
 	j := job{ctx: ctx, req: *req, resC: resC}
-	// 当队列满时等待空位；同时尊重 ctx 取消/超时
+	// Block when the queue is full; respect ctx cancellation/timeout
 	select {
 	case q.jobs <- j:
 		// enqueued
