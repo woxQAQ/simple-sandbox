@@ -9,7 +9,7 @@ on:
       - 'go.mod'
       - 'go.sum'
       - 'docker/apiserver/**'
-      - '.github/workflows/apiserver-image.yml'
+      - '.github/workflows/cicd-release-apiserver-image.yml'
   pull_request:
     branches: [ main ]
     paths:
@@ -18,7 +18,7 @@ on:
       - 'go.mod'
       - 'go.sum'
       - 'docker/apiserver/**'
-      - '.github/workflows/apiserver-image.yml'
+      - '.github/workflows/cicd-release-apiserver-image.yml'
 
 env:
   REGISTRY: docker.io
@@ -69,3 +69,5 @@ jobs:
         labels: ${{ steps.meta.outputs.labels }}
         cache-from: type=gha
         cache-to: type=gha,mode=max
+        build-args: |
+          BUILDKIT_INLINE_CACHE=1

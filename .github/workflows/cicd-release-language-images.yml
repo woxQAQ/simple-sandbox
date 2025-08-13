@@ -5,12 +5,12 @@ on:
     branches: [ main, feat/* ]
     paths:
       - 'docker/runtimes/**'
-      - '.github/workflows/language-images.yml'
+      - '.github/workflows/cicd-release-language-images.yml'
   pull_request:
     branches: [ main ]
     paths:
       - 'docker/runtimes/**'
-      - '.github/workflows/language-images.yml'
+      - '.github/workflows/cicd-release-language-images.yml'
 
 env:
   REGISTRY: docker.io
