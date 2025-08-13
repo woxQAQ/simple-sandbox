@@ -1,31 +1,31 @@
-# Simple Sandbox Configuration
-# This file contains all runtime and language-specific configurations
+# E2E Test Configuration
+# This configuration is optimized for testing purposes
 
-# Runtime configuration (formerly environment variables)
+# Runtime configuration
 runtime:
-  # Container backend: docker, k8s
+  # Container backend: docker (k8s requires cluster setup)
   backend: "docker"
   
-  # Concurrency settings
-  max_concurrency: 4
-  max_queue: 32
+  # Reduced concurrency for testing
+  max_concurrency: 2
+  max_queue: 8
   
   # Container registry settings
   image_registry: "docker.io"
   
-  # Registry authentication (optional)
+  # Registry authentication (empty for public images)
   registry_username: ""
   registry_password: ""
   registry_auth: ""
   registry_identity_token: ""
   
-  # Kubernetes settings
+  # Kubernetes settings (not used in docker backend)
   k8s_image_pull_secret: ""
 
 # Language-specific configurations
 languages:
   python:
-    repository: "sandbox-python"
+    repository: "woxqaq/sandbox-python"
     tag: "latest"
     registry: ""
     seccomp:
@@ -33,7 +33,7 @@ languages:
       k8s_localhost_ref: ""
   
   node:
-    repository: "sandbox-node"
+    repository: "woxqaq/sandbox-node"
     tag: "latest"
     registry: ""
     seccomp:
