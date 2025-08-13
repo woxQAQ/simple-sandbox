@@ -17,7 +17,6 @@ import (
 	"google.golang.org/grpc/credentials/insecure"
 	runtimeapi "k8s.io/cri-api/pkg/apis/runtime/v1"
 
-	"github.com/woxqaq/simple-sandbox/internal/config"
 	"github.com/woxqaq/simple-sandbox/internal/models"
 )
 
@@ -28,7 +27,8 @@ type Manager struct {
 }
 
 func New() (*Manager, error) {
-	sock := os.Getenv("SANDBOX_CRI_SOCKET")
+	criConfig := GetConfig()
+	sock := criConfig.Socket
 	if sock == "" {
 		sock = "unix:///var/run/containerd/containerd.sock"
 	}
@@ -61,11 +61,12 @@ func (m *Manager) Run(ctx context.Context, req *models.RunRequest) (*models.RunR
 		return nil, err
 	}
 
-	ref := config.ImageRefFor(req.Language)
-	image := config.ImageFor(req.Language)
+	criConfig := GetConfig()
+	ref := criConfig.ImageRefFor(req.Language)
+	image := criConfig.ImageFor(req.Language)
 
 	// ensure image
-	authInfo := config.RegistryAuthFor(ref.Registry)
+	authInfo := criConfig.RegistryAuthFor(ref.Registry)
 	pullReq := &runtimeapi.PullImageRequest{Image: &runtimeapi.ImageSpec{Image: image}}
 	if authInfo.Username != "" || authInfo.IdentityToken != "" || authInfo.Auth != "" {
 		pullReq.Auth = &runtimeapi.AuthConfig{
@@ -129,7 +130,7 @@ func (m *Manager) Run(ctx context.Context, req *models.RunRequest) (*models.RunR
 	mem := int64(req.MemoryMB) * 1024 * 1024
 	cpuShares := int64(req.CPUShares)
 	logPath := "container.log"
-	sec := config.SeccompForCRI(req.Language)
+	sec := criConfig.SeccompForCRI(req.Language)
 	linuxCtx := &runtimeapi.LinuxContainerSecurityContext{
 		RunAsUser:      &runtimeapi.Int64Value{Value: 1000},
 		ReadonlyRootfs: true,

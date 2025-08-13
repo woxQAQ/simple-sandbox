@@ -16,7 +16,6 @@ import (
 	imageTypes "github.com/docker/docker/api/types/image"
 	"github.com/docker/docker/api/types/mount"
 	"github.com/docker/docker/client"
-	"github.com/woxqaq/simple-sandbox/internal/config"
 	"github.com/woxqaq/simple-sandbox/internal/logging"
 	"github.com/woxqaq/simple-sandbox/internal/models"
 	seccomppkg "github.com/woxqaq/simple-sandbox/internal/security/seccomp"
@@ -166,24 +165,19 @@ func parseRunnerJSON(raw []byte) (runnerJSON, error) {
 	return r, nil
 }
 
-// ImageRef splits registry/repository and tag
-
-type ImageRef struct {
-	Registry   string
-	Repository string
-	Tag        string
-}
-
-func (m *Manager) ensureImage(ctx context.Context, image string, _ string) error {
+func (m *Manager) ensureImage(ctx context.Context, image string, lang string) error {
 	_, _, err := m.cli.ImageInspectWithRaw(ctx, image)
 	if err == nil {
 		return nil
 	}
-	// auth header if needed
+
+	// Get Docker config for authentication
+	dockerConfig := GetConfig()
 	refParts := strings.SplitN(image, "/", 2)
 	server := refParts[0]
-	authInfo := config.RegistryAuthFor(server)
-	authHeader, _ := config.DockerRegistryAuthHeader(authInfo)
+	authInfo := dockerConfig.RegistryAuthFor(server)
+	authHeader, _ := dockerConfig.DockerRegistryAuthHeader(authInfo)
+
 	pullReader, err := m.cli.ImagePull(ctx, image, imageTypes.PullOptions{RegistryAuth: authHeader})
 	if err != nil {
 		return fmt.Errorf("pull image failed: %w", err)
@@ -194,7 +188,8 @@ func (m *Manager) ensureImage(ctx context.Context, image string, _ string) error
 }
 
 func imageAndFileFor(lang string) (string, string) {
-	full := config.ImageFor(lang)
+	dockerConfig := GetConfig()
+	full := dockerConfig.ImageFor(lang)
 	switch lang {
 	case models.LanguagePython:
 		return full, "main.py"

@@ -3,7 +3,6 @@ package api
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"net/http"
 	"time"
 
@@ -21,8 +20,16 @@ type Server struct {
 
 func NewServer(mgr sandbox.SandboxManager) *Server {
 	// wrap with queue/limit by default
-	runtimeConfig := config.GetRuntimeConfig()
-	mgr = limited.NewQueueingManager(mgr, runtimeConfig.MaxConcurrency, runtimeConfig.MaxQueue)
+	yamlCfg := config.GetYAMLConfig()
+	maxConcurrency := yamlCfg.Runtime.MaxConcurrency
+	if maxConcurrency == 0 {
+		maxConcurrency = 4 // Default concurrency
+	}
+	maxQueue := yamlCfg.Runtime.MaxQueue
+	if maxQueue == 0 {
+		maxQueue = 32 // Default queue size
+	}
+	mgr = limited.NewQueueingManager(mgr, maxConcurrency, maxQueue)
 	return &Server{mgr: mgr}
 }
 
@@ -50,11 +57,6 @@ func (s *Server) handleRun(w http.ResponseWriter, r *http.Request) {
 	defer cancel()
 	res, err := s.mgr.Run(ctx, &req)
 	if err != nil {
-		if errors.Is(err, limited.ErrQueueFull) {
-			w.WriteHeader(http.StatusTooManyRequests)
-			_, _ = w.Write([]byte("queue full"))
-			return
-		}
 		logging.Logger.Error("run failed", zap.Error(err))
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return

@@ -17,7 +17,6 @@ import (
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
 
-	"github.com/woxqaq/simple-sandbox/internal/config"
 	"github.com/woxqaq/simple-sandbox/internal/models"
 )
 
@@ -58,8 +57,9 @@ func (m *Manager) Run(ctx context.Context, req *models.RunRequest) (*models.RunR
 
 	ns := req.Namespace
 
-	image := config.ImageFor(req.Language)
-	pullSecret := config.K8sImagePullSecret()
+	k8sConfig := GetConfig()
+	image := k8sConfig.ImageFor(req.Language)
+	pullSecret := k8sConfig.K8sImagePullSecret()
 
 	// Determine code key by language
 	codeKey := "main"
@@ -161,4 +161,8 @@ func (m *Manager) Run(ctx context.Context, req *models.RunRequest) (*models.RunR
 	return &models.RunResult{ExitCode: r.ExitCode, Stdout: r.Stdout, Stderr: r.Stderr, ImagesB64: r.ImagesB64}, nil
 }
 
-func randHex(n int) string { b := make([]byte, n); _, _ = rand.Read(b); return hex.EncodeToString(b) }
+func randHex(n int) string {
+	b := make([]byte, n)
+	_, _ = rand.Read(b)
+	return hex.EncodeToString(b)
+}

@@ -2,13 +2,12 @@ package limited
 
 import (
 	"context"
-	"errors"
 
 	"github.com/woxqaq/simple-sandbox/internal/models"
 	"github.com/woxqaq/simple-sandbox/internal/sandbox"
 )
 
-var ErrQueueFull = errors.New("queue full")
+// 队列实现为带缓冲 channel；当队列已满时将阻塞等待，直到有空位或 ctx 取消
 
 type job struct {
 	ctx  context.Context
@@ -41,13 +40,12 @@ func (q *QueueingManager) Run(ctx context.Context, req *models.RunRequest) (*mod
 	resC := make(chan result, 1)
 	// 复制请求，避免调用方后续修改产生数据竞争
 	j := job{ctx: ctx, req: *req, resC: resC}
+	// 当队列满时等待空位；同时尊重 ctx 取消/超时
 	select {
 	case q.jobs <- j:
 		// enqueued
 	case <-ctx.Done():
 		return nil, ctx.Err()
-	default:
-		return nil, ErrQueueFull
 	}
 	select {
 	case out := <-resC:

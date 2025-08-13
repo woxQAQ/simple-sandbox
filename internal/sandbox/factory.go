@@ -10,8 +10,11 @@ import (
 )
 
 func NewFromEnv() (SandboxManager, error) {
-	runtimeConfig := config.GetRuntimeConfig()
-	b := runtimeConfig.Backend
+	yamlCfg := config.GetYAMLConfig()
+	b := yamlCfg.Runtime.Backend
+	if b == "" {
+		b = "docker" // Default backend
+	}
 	switch b {
 	case "docker":
 		return dockermgr.New()
