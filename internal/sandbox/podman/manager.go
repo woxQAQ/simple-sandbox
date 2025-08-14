@@ -56,11 +56,18 @@ func (m *Manager) Run(ctx context.Context, req *models.RunRequest) (*models.RunR
 		return nil, fmt.Errorf("failed to chmod temp dir: %w", err)
 	}
 
-	// Create seccomp profile file
-	seccompProfile := seccomppkg.For(req.Language)
-	seccompPath := filepath.Join(tmpDir, "seccomp.json")
-	if err = os.WriteFile(seccompPath, []byte(seccompProfile), 0644); err != nil {
-		return nil, fmt.Errorf("failed to write seccomp profile: %w", err)
+	// Create seccomp profile file (temporarily disabled for Node.js)
+	var seccompProfile string
+	var seccompPath string
+	if req.Language == models.LanguageNode {
+		// Temporarily disable seccomp for Node.js
+		seccompProfile = ""
+	} else {
+		seccompProfile = seccomppkg.For(req.Language)
+		seccompPath = filepath.Join(tmpDir, "seccomp.json")
+		if err = os.WriteFile(seccompPath, []byte(seccompProfile), 0644); err != nil {
+			return nil, fmt.Errorf("failed to write seccomp profile: %w", err)
+		}
 	}
 
 	// Build podman run command
@@ -71,19 +78,25 @@ func (m *Manager) Run(ctx context.Context, req *models.RunRequest) (*models.RunR
 		"--network=none",
 		"--cap-drop=ALL",
 		"--security-opt=no-new-privileges",
-		fmt.Sprintf("--security-opt=seccomp=%s", seccompPath),
+	}
+	
+	// Add seccomp only if not Node.js
+	if req.Language != models.LanguageNode {
+		args = append(args, fmt.Sprintf("--security-opt=seccomp=%s", seccompPath))
+	}
+	
+	args = append(args,
 		fmt.Sprintf("--memory=%dm", req.MemoryMB),
 		fmt.Sprintf("--cpu-shares=%d", req.CPUShares),
 		fmt.Sprintf("--pids-limit=%d", constants.DefaultPidsLimit),
 		"--oom-kill-disable=false",
-		fmt.Sprintf("--volume=%s:%s:ro,Z", tmpDir, constants.WorkspaceDir),
+		fmt.Sprintf("--volume=%s:%s:Z", tmpDir, constants.WorkspaceDir),
 		fmt.Sprintf("--tmpfs=%s:size=%d,mode=%o", constants.TmpDir, constants.TmpfsSizeBytes, constants.TmpfsModeStickyRW),
 		fmt.Sprintf("--tmpfs=%s:size=%d,mode=%o", constants.DevShmDir, constants.DevShmSizeBytes, constants.TmpfsModeStickyRW),
-
 		fmt.Sprintf("--workdir=%s", constants.WorkspaceDir),
 		fmt.Sprintf("--env=%s=%s", constants.SandboxEnvKey, constants.SandboxEnvVal),
 		image,
-	}
+	)
 
 	start := time.Now()
 	ctxRun, cancel := context.WithTimeout(ctx, time.Duration(req.TimeLimitMs)*time.Millisecond)
@@ -129,6 +142,9 @@ func (m *Manager) ensureImage(ctx context.Context, image string, lang string) er
 	if err := cmd.Run(); err == nil {
 		return nil // Image exists
 	}
+	
+	// Debug: log the image being checked
+	fmt.Printf("DEBUG: Image '%s' not found locally, attempting to pull...\n", image)
 
 	// Pull image with authentication if configured
 	podmanConfig := GetConfig()

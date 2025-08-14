@@ -1,6 +1,4 @@
 // Node.js 运行器 - 简化版本
-// 依赖容器安全隔离，重定向 console 输出
-
 const fs = require('fs');
 
 const codePath = '/workspace/main.js';
@@ -15,38 +13,48 @@ if (!fs.existsSync(codePath)) {
   process.exit(0);
 }
 
-// 捕获 console 输出
-const output = {
-  stdout: '',
-  stderr: ''
+// 捕获输出
+let stdoutData = '';
+let stderrData = '';
+
+const originalStdoutWrite = process.stdout.write;
+const originalStderrWrite = process.stderr.write;
+
+process.stdout.write = function(string) {
+  stdoutData += string;
+  return true;
 };
 
-const originalLog = console.log;
-const originalError = console.error;
-
-console.log = (...args) => {
-  output.stdout += args.join(' ') + '\n';
-  originalLog(...args); // 同时输出到真实控制台
+process.stderr.write = function(string) {
+  stderrData += string;
+  return true;
 };
 
-console.error = (...args) => {
-  output.stderr += args.join(' ') + '\n';
-  originalError(...args); // 同时输出到真实控制台
-};
+let exitCode = 0;
 
 try {
-  require(codePath);
-  console.log(JSON.stringify({
-    stdout: output.stdout,
-    stderr: output.stderr,
-    exit_code: 0,
-    artifacts: []
-  }));
+  // 读取代码并执行
+  const code = fs.readFileSync(codePath, 'utf8');
+  eval(code);
+  exitCode = 0;
 } catch (error) {
-  console.log(JSON.stringify({
-    stdout: output.stdout,
-    stderr: output.stderr + error.message + '\n',
-    exit_code: 1,
+  exitCode = 1;
+  stderrData += error.message + '\n';
+  if (error.stack) {
+    stderrData += error.stack + '\n';
+  }
+} finally {
+  // 恢复原始输出
+  process.stdout.write = originalStdoutWrite;
+  process.stderr.write = originalStderrWrite;
+  
+  // 输出结果
+  const result = {
+    stdout: stdoutData,
+    stderr: stderrData,
+    exit_code: exitCode,
     artifacts: []
-  }));
+  };
+  
+  console.log(JSON.stringify(result));
 }
