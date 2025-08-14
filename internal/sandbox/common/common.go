@@ -12,10 +12,10 @@ import (
 
 // RunnerJSON is the standard JSON payload produced by the in-container runner.
 type RunnerJSON struct {
-	Stdout    string              `json:"stdout"`
-	Stderr    string              `json:"stderr"`
-	Artifacts []models.Artifact   `json:"artifacts,omitempty"`
-	ExitCode  int                 `json:"exit_code"`
+	Stdout    string            `json:"stdout"`
+	Stderr    string            `json:"stderr"`
+	Artifacts []models.Artifact `json:"artifacts,omitempty"`
+	ExitCode  int               `json:"exit_code"`
 }
 
 // ParseRunnerJSONFromBytes parses the last JSON object from raw logs into RunnerJSON.
@@ -52,6 +52,9 @@ type ImageRef struct {
 }
 
 func (r ImageRef) String() string {
+	if r.Registry == "" {
+		return r.Repository + ":" + r.Tag
+	}
 	return r.Registry + "/" + r.Repository + ":" + r.Tag
 }
 
@@ -66,9 +69,8 @@ func ResolveImageRef(yamlCfg *config.SandboxConfig, lang string) ImageRef {
 	if registry == "" {
 		registry = yamlCfg.Runtime.ImageRegistry
 	}
-	if registry == "" {
-		registry = constants.DefaultRegistry
-	}
+	// Don't use default registry if both language and runtime registry are empty
+	// This allows for local images without registry prefix
 
 	repo := langSettings.Repository
 	if repo == "" {

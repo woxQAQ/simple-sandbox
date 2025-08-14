@@ -35,17 +35,17 @@ func NewTestServer(port string) *TestServer {
 // Start 启动测试服务器
 func (ts *TestServer) Start() error {
 	// 构建服务器二进制文件
-	buildCmd := exec.Command("go", "build", "-o", "../tmp/sandboxd", "../cmd/sandboxd")
-	buildCmd.Dir = filepath.Join("..", "..")
+	buildCmd := exec.Command("go", "build", "-o", "tmp/sandboxd", "./cmd/sandboxd")
+	buildCmd.Dir = filepath.Join("..") // 从 e2e 目录到项目根目录
 	if err := buildCmd.Run(); err != nil {
 		return fmt.Errorf("failed to build server: %w", err)
 	}
 
 	// 启动服务器
-	ts.cmd = exec.Command("../tmp/sandboxd", "-addr", ":"+ts.port)
-	ts.cmd.Dir = filepath.Join("..", "..")
-	ts.cmd.Env = append(os.Environ(), "SANDBOX_CONFIG=config/sandbox.yaml.example")
-	
+	ts.cmd = exec.Command("tmp/sandboxd", "-addr", ":"+ts.port)
+	ts.cmd.Dir = filepath.Join("..") // 从 e2e 目录到项目根目录
+	ts.cmd.Env = append(os.Environ(), "SANDBOX_CONFIG=e2e/testdata/test_config.yaml")
+
 	if err := ts.cmd.Start(); err != nil {
 		return fmt.Errorf("failed to start server: %w", err)
 	}

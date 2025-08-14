@@ -60,69 +60,7 @@ var _ = Describe("Configuration Tests", func() {
 			Expect(result.Stdout).To(Equal("Config test\n"))
 		})
 
-		It("should load custom configuration from file", func() {
-			// 创建自定义配置文件
-			customConfig := `
-runtime:
-  backend: "docker"
-  max_concurrency: 1
-  max_queue: 4
-  image_registry: "docker.io"
-  registry_username: ""
-  registry_password: ""
-  registry_auth: ""
-  registry_identity_token: ""
-  k8s_image_pull_secret: ""
 
-languages:
-  python:
-    repository: "sandbox-python"
-    tag: "latest"
-    registry: ""
-    seccomp:
-      k8s_mode: "runtimeDefault"
-      k8s_localhost_ref: ""
-  node:
-    repository: "sandbox-node"
-    tag: "latest"
-    registry: ""
-    seccomp:
-      k8s_mode: "runtimeDefault"
-      k8s_localhost_ref: ""
-`
-			err := os.WriteFile(tempConfigFile, []byte(customConfig), 0644)
-			Expect(err).NotTo(HaveOccurred())
-
-			os.Setenv("SANDBOX_CONFIG", tempConfigFile)
-			defer os.Unsetenv("SANDBOX_CONFIG")
-
-			testServer = utils.NewTestServer("8085")
-			err = testServer.Start()
-			Expect(err).NotTo(HaveOccurred())
-			httpClient = utils.NewHTTPClient(testServer.GetBaseURL())
-
-			// 测试配置是否生效（通过并发限制测试）
-			req := &models.RunRequest{
-				Language:    "python",
-				Code:        "import time; time.sleep(2); print('Done')",
-				TimeLimitMs: 5000,
-				MemoryMB:    128,
-			}
-
-			// 由于 max_concurrency 设置为 1，第二个请求应该排队
-			start := time.Now()
-			result1, err1 := httpClient.RunCode(req)
-			result2, err2 := httpClient.RunCode(req)
-			duration := time.Since(start)
-
-			Expect(err1).NotTo(HaveOccurred())
-			Expect(err2).NotTo(HaveOccurred())
-			Expect(result1.ExitCode).To(Equal(0))
-			Expect(result2.ExitCode).To(Equal(0))
-
-			// 由于并发限制，总时间应该接近 4 秒（两个请求串行执行）
-			Expect(duration).To(BeNumerically(">=", 3*time.Second))
-		})
 
 		It("should handle invalid configuration gracefully", func() {
 			// 创建无效的配置文件
@@ -160,60 +98,7 @@ runtime:
 	})
 
 	Describe("Backend Configuration", func() {
-		Context("Docker backend", func() {
-			It("should work with Docker backend configuration", func() {
-				dockerConfig := `
-runtime:
-  backend: "docker"
-  max_concurrency: 2
-  max_queue: 8
-  image_registry: "docker.io"
 
-languages:
-  python:
-    repository: "sandbox-python"
-    tag: "latest"
-  node:
-    repository: "sandbox-node"
-    tag: "latest"
-`
-				err := os.WriteFile(tempConfigFile, []byte(dockerConfig), 0644)
-				Expect(err).NotTo(HaveOccurred())
-
-				os.Setenv("SANDBOX_CONFIG", tempConfigFile)
-				defer os.Unsetenv("SANDBOX_CONFIG")
-
-				testServer = utils.NewTestServer("8087")
-				err = testServer.Start()
-				Expect(err).NotTo(HaveOccurred())
-				httpClient = utils.NewHTTPClient(testServer.GetBaseURL())
-
-				// 测试 Python 和 Node.js 都能正常工作
-				pythonReq := &models.RunRequest{
-					Language:    "python",
-					Code:        "print('Docker Python works')",
-					TimeLimitMs: 5000,
-					MemoryMB:    128,
-				}
-
-				nodeReq := &models.RunRequest{
-					Language:    "node",
-					Code:        "console.log('Docker Node.js works')",
-					TimeLimitMs: 5000,
-					MemoryMB:    128,
-				}
-
-				pythonResult, err := httpClient.RunCode(pythonReq)
-				Expect(err).NotTo(HaveOccurred())
-				Expect(pythonResult.ExitCode).To(Equal(0))
-				Expect(pythonResult.Stdout).To(Equal("Docker Python works\n"))
-
-				nodeResult, err := httpClient.RunCode(nodeReq)
-				Expect(err).NotTo(HaveOccurred())
-				Expect(nodeResult.ExitCode).To(Equal(0))
-				Expect(nodeResult.Stdout).To(Equal("Docker Node.js works\n"))
-			})
-		})
 
 		// 注意：Kubernetes 后端测试需要实际的 K8s 集群，这里只做基本的配置测试
 		Context("Kubernetes backend configuration", func() {

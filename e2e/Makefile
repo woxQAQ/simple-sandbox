@@ -1,6 +1,6 @@
 # E2E Test Makefile
 
-.PHONY: help deps build test clean docker-build docker-test
+.PHONY: help deps build test clean docker-build podman-build local-test docker-test
 
 # Variables
 GINKGO_FLAGS := --randomize-all --race
@@ -21,6 +21,8 @@ help:
 	@echo "  coverage     - Run tests with coverage report"
 	@echo "  clean        - Clean up test artifacts"
 	@echo "  docker-build - Build Docker images"
+	@echo "  podman-build - Build Podman images"
+	@echo "  local-test   - Build local images and run tests"
 	@echo "  docker-test  - Build images and run tests"
 
 deps:
@@ -54,13 +56,18 @@ coverage: build
 	@echo "Coverage report: coverage.html"
 
 # =============================================================================
-# Docker Operations
+# Container Operations
 # =============================================================================
 
 docker-build:
-	cd .. && docker build -f docker/runtimes/python/Dockerfile -t sandbox-python:latest docker/runtimes/python/
-	cd .. && docker build -f docker/runtimes/node/Dockerfile -t sandbox-node:latest docker/runtimes/node/
-	cd .. && docker build -f docker/apiserver/Dockerfile -t sandbox-api:latest .
+	cd .. && docker build -f docker/runtimes/python/Dockerfile -t sandbox-python:latest .
+	cd .. && docker build -f docker/runtimes/node/Dockerfile -t sandbox-node:latest .
+
+podman-build:
+	cd .. && podman build -f docker/runtimes/python/Dockerfile -t sandbox-python:latest .
+	cd .. && podman build -f docker/runtimes/node/Dockerfile -t sandbox-node:latest .
+
+local-test: podman-build test
 
 docker-test: docker-build test
 
@@ -72,4 +79,6 @@ clean:
 	rm -f $(SERVER_BIN)
 	rm -f coverage.out coverage.html
 	rm -f /tmp/test_sandbox_config*.yaml
+	# Clean up container images and system
 	docker system prune -f --filter "label=sandbox-test" 2>/dev/null || true
+	podman system prune -f 2>/dev/null || true

@@ -47,6 +47,20 @@ func (m *Manager) Run(ctx context.Context, req *models.RunRequest) (*models.RunR
 	if err = os.WriteFile(codePath, []byte(req.Code), 0644); err != nil {
 		return nil, err
 	}
+	// Ensure the file and directory are readable by all users
+	if err = os.Chmod(codePath, 0755); err != nil {
+		return nil, fmt.Errorf("failed to chmod code file: %w", err)
+	}
+	if err = os.Chmod(tmpDir, 0755); err != nil {
+		return nil, fmt.Errorf("failed to chmod temp dir: %w", err)
+	}
+
+	// Create seccomp profile file
+	seccompProfile := seccomppkg.For(req.Language)
+	seccompPath := filepath.Join(tmpDir, "seccomp.json")
+	if err = os.WriteFile(seccompPath, []byte(seccompProfile), 0644); err != nil {
+		return nil, fmt.Errorf("failed to write seccomp profile: %w", err)
+	}
 
 	// Build podman run command
 	args := []string{
@@ -56,7 +70,7 @@ func (m *Manager) Run(ctx context.Context, req *models.RunRequest) (*models.RunR
 		"--network=none",
 		"--cap-drop=ALL",
 		"--security-opt=no-new-privileges",
-		fmt.Sprintf("--security-opt=seccomp=%s", seccomppkg.For(req.Language)),
+		fmt.Sprintf("--security-opt=seccomp=%s", seccompPath),
 		fmt.Sprintf("--memory=%dm", req.MemoryMB),
 		fmt.Sprintf("--cpu-shares=%d", req.CPUShares),
 		fmt.Sprintf("--pids-limit=%d", constants.DefaultPidsLimit),
@@ -64,8 +78,10 @@ func (m *Manager) Run(ctx context.Context, req *models.RunRequest) (*models.RunR
 		fmt.Sprintf("--volume=%s:%s:ro,Z", tmpDir, constants.WorkspaceDir),
 		fmt.Sprintf("--tmpfs=%s:size=%d,mode=%o", constants.TmpDir, constants.TmpfsSizeBytes, constants.TmpfsModeStickyRW),
 		fmt.Sprintf("--tmpfs=%s:size=%d,mode=%o", constants.DevShmDir, constants.DevShmSizeBytes, constants.TmpfsModeStickyRW),
+
 		fmt.Sprintf("--workdir=%s", constants.WorkspaceDir),
 		fmt.Sprintf("--env=%s=%s", constants.SandboxEnvKey, constants.SandboxEnvVal),
+		fmt.Sprintf("--env=SANDBOX_CODE=%s", req.Code),
 		image,
 	}
 
@@ -85,10 +101,8 @@ func (m *Manager) Run(ctx context.Context, req *models.RunRequest) (*models.RunR
 		return nil, context.DeadlineExceeded
 	}
 
-	// Combine stdout and stderr for parsing
-	output := stdout.String() + stderr.String()
-
-	parsed, parseErr := common.ParseRunnerJSONFromBytes([]byte(output))
+	// Parse JSON from stdout only, stderr may contain non-JSON logs
+	parsed, parseErr := common.ParseRunnerJSONFromBytes([]byte(stdout.String()))
 	if parseErr != nil {
 		logging.Logger.Warn("failed to parse runner json, returning raw logs", zap.Error(parseErr))
 		return &models.RunResult{

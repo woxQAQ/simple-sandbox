@@ -19,8 +19,8 @@ type RunRequest struct {
 }
 
 type Artifact struct {
-	Type     string            `json:"type"`     // "image", "file", etc.
-	Data     string            `json:"data"`     // Base64 encoded data
+	Type     string            `json:"type"` // "image", "file", etc.
+	Data     string            `json:"data"` // Base64 encoded data
 	Metadata map[string]string `json:"metadata,omitempty"`
 }
 

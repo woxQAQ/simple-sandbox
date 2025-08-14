@@ -4,14 +4,14 @@
 # Runtime configuration
 runtime:
   # Container backend: docker (k8s requires cluster setup)
-  backend: "docker"
+  backend: "podman"
   
   # Reduced concurrency for testing
   max_concurrency: 2
   max_queue: 8
   
-  # Container registry settings
-  image_registry: "docker.io"
+  # Container registry settings (empty for local images)
+  image_registry: ""
   
   # Registry authentication (empty for public images)
   registry_username: ""
@@ -25,7 +25,7 @@ runtime:
 # Language-specific configurations
 languages:
   python:
-    repository: "woxqaq/sandbox-python"
+    repository: "localhost/sandbox-python"
     tag: "latest"
     registry: ""
     seccomp:
@@ -33,7 +33,7 @@ languages:
       k8s_localhost_ref: ""
   
   node:
-    repository: "woxqaq/sandbox-node"
+    repository: "localhost/sandbox-node"
     tag: "latest"
     registry: ""
     seccomp:
