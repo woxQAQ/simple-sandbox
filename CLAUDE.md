@@ -9,21 +9,25 @@
 
 - if you add comments, explain WHY you code the following logic instead of WHAT the following logic is.
 - reduce comments, a better function name is better than writing extend comment to explain the function
-- coding python with PEP 8 style guidelines.
+- coding with Go standard conventions and best practices
 - AVOID using UNNECESSARY design pattern if you are doing anything that is easy.
 - Keep functions focused and single-purpose
 
 ### best practices
 
-- Use docstrings for modules, classes, and functions
-- Use list comprehensions for simple transformations
-- Prefer pathlib over os.path for file operations
-- Use context managers (with statements) for resource management
-- Use logging module instead of print statements
+- Use Go standard library patterns and conventions
+- Prefer composition over inheritance
+- Use interfaces for abstraction and decoupling
+- Handle errors explicitly and gracefully
+- Use context for cancellation and timeouts
+- Follow Go naming conventions (CamelCase for exported, camelCase for unexported)
 
-### type hint
+### type hints
 
-- Document complex types with comments
+- Use Go's type system effectively
+- Define clear interfaces for contracts
+- Use structs for data models
+- Leverage Go's strong typing
 
 ## mcp servers
 
@@ -36,71 +40,98 @@ There are several mcp tools you can use:
 # project layout
 
 ```
-sandbox/
-├── main.py                    # 主程序入口
-├── README.md                 # 项目说明
-├── LICENSE                   # 许可证文件
-├── Dockerfile               # Docker构建文件
-├── pyproject.toml           # Python项目配置
-├── makefile                 # 构建脚本
-├── shell.nix               # Nix开发环境配置
-├── .github/                # GitHub Actions工作流
-├── src/                    # 源代码目录
-│   ├── api/               # HTTP服务器模块
-│   ├── runtime/           # 代码运行时模块
-│   │   ├── common/        # 公共运行时组件
-│   │   ├── python/        # Python运行时实现
-│   │   └── nodejs/        # Node.js运行时实现
-│   ├── security/          # 安全模块
-│   │   ├── bpf/          # BPF相关组件
-│   │   ├── static/       # 静态安全配置
-│   │   └── syscalls/     # 系统调用定义
-│   └── utils/            # 工具模块
-├── scripts/               # 部署和构建脚本
-├── tests/                # 测试目录
-│   ├── integration/     # 集成测试
-│   ├── unit/            # 单元测试
-│   └── utils/           # 工具测试
-├── deploy/              # 部署配置
-│   └── helm/           # Kubernetes Helm Chart
-├── docker/               # Docker相关配置
-├── config.py             # 配置文件
-├── models.py             # 数据模型
+simple-sandbox/
+├── cmd/sandboxd/           # 主程序入口
+├── internal/               # 内部包
+│   ├── api/               # HTTP API服务器
+│   ├── config/            # 配置管理
+│   ├── constants/         # 常量定义
+│   ├── logging/           # 结构化日志
+│   ├── models/            # 数据模型
+│   ├── sandbox/           # 沙盒管理核心
+│   │   ├── docker/        # Docker运行时
+│   │   ├── k8s/           # Kubernetes运行时
+│   │   ├── podman/        # Podman运行时
+│   │   ├── limited/       # 并发控制
+│   │   ├── common/        # 通用工具
+│   │   └── cri/           # CRI运行时接口
+│   ├── security/          # 安全配置
+│   │   └── seccomp/       # seccomp配置文件
+│   └── types/             # 类型定义
+├── docker/                # Docker相关配置
+│   ├── apiserver/         # API服务器镜像
+│   └── runtimes/          # 语言运行时镜像
+│       ├── python/        # Python运行时
+│       └── node/          # Node.js运行时
+├── config/                # 配置文件
+├── e2e/                   # 端到端测试
+├── go.mod/go.sum          # Go模块依赖
+├── Makefile              # 构建脚本
+├── README.md             # 项目说明
+└── LICENSE               # 许可证文件
 ```
 
 ## 核心架构
 
-### HTTP服务器层 (src/api/)
-- **app.py**: 使用Python内置`http.server`实现的轻量级HTTP服务器
-- 支持CORS、JSON请求处理、错误处理
-- 提供RESTful API接口
-- 内置请求速率限制和并发控制
+### 主程序入口 (cmd/sandboxd/)
+- **main.go**: 程序入口点，初始化配置、日志、沙盒管理器和HTTP服务器
+- 支持优雅关闭和信号处理
+- 通过环境变量或命令行参数配置
 
-### 运行时层 (src/runtime/)
-- **common/**: 公共运行时组件和基类定义
-- **python/**: Python代码执行环境，包含插件系统和AST转换
-- **nodejs/**: Node.js代码执行环境，使用koffi FFI库进行系统调用
-- 每个运行时都支持独立的进程管理和资源隔离
+### HTTP服务器层 (internal/api/)
+- **server.go**: 使用标准库`net/http`实现的轻量级HTTP服务器
+- 支持JSON请求处理和错误处理
+- 提供RESTful API接口：`POST /v1/run`
+- 内置请求队列和并发控制
 
-### 安全层 (src/security/)
-- **bpf/**: BPF相关安全组件，包含C语言seccomp注入器
-- **static/**: 静态安全配置，为不同语言定义系统调用过滤规则
-- **syscalls/**: 系统调用定义和权限管理
-- 多层安全防护：seccomp系统调用过滤、进程隔离、权限控制
+### 沙盒管理层 (internal/sandbox/)
+- **manager.go**: SandboxManager接口定义，抽象不同运行时后端
+- **factory.go**: 根据环境配置创建具体的沙盒管理器
+- **common/**: 通用工具函数和镜像管理
+- **limited/**: 队列和并发控制包装器
 
-### 工具和配置
-- **utils/**: 通用工具函数和加密工具
-- **config.py**: 全局配置管理
-- **models.py**: 数据模型定义
+### 运行时实现
+- **docker/**: 使用Docker Go SDK的容器运行时实现
+- **k8s/**: 基于Kubernetes Pod的运行时实现
+- **podman/**: 使用Podman CLI的容器运行时实现
+- 每个运行时都支持资源限制、安全隔离和超时控制
 
-### 部署和构建
-- **docker/**: Docker相关配置，支持多架构构建
-- **scripts/**: 部署和构建脚本
-- **deploy/helm/**: Kubernetes Helm Chart部署配置
-- **.github/**: GitHub Actions CI/CD工作流
+### 安全层 (internal/security/)
+- **seccomp/**: 为Python和Node.js定制的系统调用过滤配置
+- 支持runtimeDefault和自定义配置文件
+- 严格的权限控制和资源限制
+
+### 配置和日志
+- **config/**: YAML配置文件管理
+- **logging/**: 基于zap的结构化日志系统
+- **models/**: 请求数据模型和验证逻辑
+
+### 运行时镜像 (docker/runtimes/)
+- **python/**: Python运行时，支持matplotlib图像生成
+- **node/**: Node.js运行时，基于Alpine Linux
+- 每个运行时都包含安全配置和资源限制
 
 ## API端点
 
-- `GET /` - 根路径，返回服务信息
-- `GET /api/v1/health` - 健康检查
-- `POST /api/v1/execute` - 代码执行
+- `POST /v1/run` - 执行代码，返回执行结果
+- 支持Python和Node.js语言
+- 提供资源限制（内存、CPU、时间）和并发控制
+- 返回执行状态、输出、错误和可选的artifacts
+
+## 构建和部署
+
+### 本地构建
+```bash
+go build -o sandboxd ./cmd/sandboxd
+```
+
+### Docker镜像
+```bash
+docker build -f docker/apiserver/Dockerfile -t sandbox-api .
+docker build -f docker/runtimes/python/Dockerfile -t sandbox-python docker/runtimes/python/
+docker build -f docker/runtimes/node/Dockerfile -t sandbox-node docker/runtimes/node/
+```
+
+### 测试
+- e2e/: 端到端测试
+- 支持本地镜像测试和集成测试
