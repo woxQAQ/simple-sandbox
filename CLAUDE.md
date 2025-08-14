@@ -132,6 +132,82 @@ docker build -f docker/runtimes/python/Dockerfile -t sandbox-python docker/runti
 docker build -f docker/runtimes/node/Dockerfile -t sandbox-node docker/runtimes/node/
 ```
 
-### 测试
-- e2e/: 端到端测试
-- 支持本地镜像测试和集成测试
+## 测试
+
+### E2E 测试指南
+
+项目使用 Ginkgo 和 Gomega 框架进行端到端测试，测试套件位于 `e2e/` 目录。
+
+#### 测试结构
+```
+e2e/
+├── README.md                    # 测试说明文档
+├── Makefile                     # 测试管理命令
+├── go.mod                       # Go 模块定义
+├── e2e_suite_test.go            # 测试套件入口
+├── api_test.go                  # API 接口测试
+├── runtime_test.go              # 运行时测试
+├── security_test.go             # 安全机制测试
+├── config_test.go               # 配置测试
+├── utils/test_utils.go          # 测试工具和辅助函数
+├── testdata/
+│   ├── test_codes.go            # 测试代码样例
+│   └── test_config.yaml         # 测试配置文件
+└── LOCAL_IMAGES_GUIDE.md        # 本地镜像测试指南
+```
+
+#### 测试类别
+- **API 测试** (`api_test.go`): 验证 `/v1/run` 端点的各种场景
+- **运行时测试** (`runtime_test.go`): 测试 Python 和 Node.js 代码执行
+- **安全测试** (`security_test.go`): 验证文件系统隔离、网络隔离、权限控制等
+- **配置测试** (`config_test.go`): 测试 YAML 配置加载和各种配置选项
+
+#### 测试命令
+```bash
+# 进入测试目录
+cd e2e
+
+# 安装测试依赖
+make deps
+
+# 构建本地镜像（使用 Podman）
+make podman-build
+
+# 运行所有测试
+make test
+
+# 运行详细输出的测试
+make test-verbose
+
+# 构建镜像并运行测试（一步完成）
+make local-test
+
+# 运行特定测试套件
+make test-api      # API 测试
+make test-runtime  # 运行时测试
+make test-security # 安全测试
+make test-config   # 配置测试
+```
+
+#### 测试配置
+测试使用 `testdata/test_config.yaml` 配置文件：
+- 使用 Podman 作为容器后端
+- 本地镜像名称：`localhost/sandbox-python` 和 `localhost/sandbox-node`
+- 降低并发数以便测试（max_concurrency: 2）
+
+#### 测试工具
+- **TestServer**: 管理测试服务器生命周期
+- **HTTPClient**: 封装 HTTP 客户端，简化 API 调用
+- **断言辅助函数**: 专门的断言函数用于验证 artifacts 和执行结果
+
+#### 开发工作流
+1. 修改运行时代码：编辑 `docker/runtimes/python/` 或 `docker/runtimes/node/`
+2. 重新构建镜像：`make podman-build`
+3. 运行测试：`make test`
+4. 验证功能：检查测试结果
+
+#### 故障排除
+- 确保镜像构建成功：`podman images | grep sandbox`
+- 检查配置文件是否正确
+- 查看详细测试日志：`make test-verbose`
+- 确保端口 8081 未被占用（测试服务器使用）
