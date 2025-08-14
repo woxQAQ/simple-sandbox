@@ -1,12 +1,12 @@
 package main
 
 import (
-	"context"
 	"flag"
 	"log"
 	"net/http"
 	"os"
 	"os/signal"
+	"strconv"
 	"syscall"
 	"time"
 
@@ -36,30 +36,29 @@ func main() {
 
 	srv := api.NewServer(mgr)
 
-	httpSrv := &http.Server{
-		Addr:    *addr,
-		Handler: srv.Routes(),
+	// 解析端口
+	port := 8080
+	if len(*addr) > 0 && (*addr)[0] == ':' {
+		if p, err := strconv.Atoi((*addr)[1:]); err == nil {
+			port = p
+		}
 	}
 
-	// start server
+	// 启动服务器
 	go func() {
 		log.Printf("listening on %s", *addr)
-		if err := httpSrv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+		if err := srv.Start(port); err != nil && err != http.ErrServerClosed {
 			log.Fatalf("server error: %v", err)
 		}
 	}()
 
-	// graceful shutdown
+	// 优雅关闭
 	stop := make(chan os.Signal, 1)
 	signal.Notify(stop, syscall.SIGINT, syscall.SIGTERM)
 	<-stop
 	log.Printf("shutting down...")
 
-	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
-	defer cancel()
-	if err := httpSrv.Shutdown(ctx); err != nil {
-		log.Printf("graceful shutdown failed: %v", err)
-		_ = httpSrv.Close()
-	}
+	// 给 Gin 服务器一些时间完成现有请求
+	time.Sleep(1 * time.Second)
 	log.Printf("server stopped")
 }

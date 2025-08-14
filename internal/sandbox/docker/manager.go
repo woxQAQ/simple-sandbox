@@ -48,7 +48,15 @@ func (m *Manager) Run(ctx context.Context, req *models.RunRequest) (*models.RunR
 	defer os.RemoveAll(tmpDir)
 
 	codePath := filepath.Join(tmpDir, filename)
-	if err = os.WriteFile(codePath, []byte(req.Code), 0644); err != nil {
+	if err = os.WriteFile(codePath, []byte(req.Code), 0600); err != nil {
+		return nil, err
+	}
+	// 设置严格的文件权限 - 仅所有者可读写
+	if err = os.Chmod(codePath, 0400); err != nil {
+		return nil, err
+	}
+	// 设置严格的目录权限 - 仅所有者可访问
+	if err = os.Chmod(tmpDir, 0700); err != nil {
 		return nil, err
 	}
 

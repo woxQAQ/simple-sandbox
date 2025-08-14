@@ -2,10 +2,12 @@ package api
 
 import (
 	"context"
-	"encoding/json"
 	"net/http"
+	"strconv"
 	"time"
 
+	"github.com/gin-gonic/gin"
+	"github.com/woxqaq/simple-sandbox/internal/auth"
 	"github.com/woxqaq/simple-sandbox/internal/config"
 	"github.com/woxqaq/simple-sandbox/internal/logging"
 	"github.com/woxqaq/simple-sandbox/internal/models"
@@ -15,7 +17,10 @@ import (
 )
 
 type Server struct {
-	mgr sandbox.SandboxManager
+	mgr     sandbox.SandboxManager
+	auth    *auth.AuthManager
+	useAuth bool
+	engine  *gin.Engine
 }
 
 func NewServer(mgr sandbox.SandboxManager) *Server {
@@ -30,37 +35,108 @@ func NewServer(mgr sandbox.SandboxManager) *Server {
 		maxQueue = 32 // Default queue size
 	}
 	mgr = limited.NewQueueingManager(mgr, maxConcurrency, maxQueue)
-	return &Server{mgr: mgr}
+	
+	// 创建认证管理器
+	authMgr := auth.NewAuthManager("your-secret-key-change-in-production", 24*time.Hour)
+	
+	// 检查是否启用认证
+	useAuth := yamlCfg.Security != nil && yamlCfg.Security.EnableAuth
+	
+	// 创建 Gin 引擎
+	gin.SetMode(gin.ReleaseMode)
+	engine := gin.New()
+	
+	// 添加中间件
+	engine.Use(gin.Logger())
+	engine.Use(gin.Recovery())
+	
+	server := &Server{
+		mgr:     mgr,
+		auth:    authMgr,
+		useAuth: useAuth,
+		engine:  engine,
+	}
+	
+	server.setupRoutes()
+	return server
 }
 
-func (s *Server) Routes() http.Handler {
-	mux := http.NewServeMux()
-	mux.HandleFunc("/v1/run", s.handleRun)
-	return mux
+func (s *Server) setupRoutes() {
+	// 健康检查
+	s.engine.GET("/health", s.handleHealth)
+	
+	// API 路由组
+	v1 := s.engine.Group("/v1")
+	
+	// 认证端点（仅在启用认证时）
+	if s.useAuth {
+		v1.POST("/auth/token", s.handleGenerateToken)
+	}
+	
+	// 代码执行端点
+	runGroup := v1.Group("/run")
+	if s.useAuth {
+		runGroup.Use(s.auth.Middleware())
+	}
+	runGroup.POST("", s.handleRun)
 }
 
-func (s *Server) handleRun(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodPost {
-		w.WriteHeader(http.StatusMethodNotAllowed)
+func (s *Server) handleHealth(c *gin.Context) {
+	c.JSON(http.StatusOK, gin.H{
+		"status": "healthy",
+		"time":   time.Now().Format(time.RFC3339),
+	})
+}
+
+func (s *Server) handleGenerateToken(c *gin.Context) {
+	// 生成新的认证令牌
+	token, err := s.auth.GenerateToken()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to generate token"})
 		return
 	}
+	
+	// 返回令牌给客户端
+	c.JSON(http.StatusOK, gin.H{
+		"token": token,
+		"type":  "Bearer",
+		"expires_in": int64(24 * time.Hour.Seconds()),
+	})
+}
+
+func (s *Server) handleRun(c *gin.Context) {
 	var req models.RunRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "bad request", http.StatusBadRequest)
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
+	
 	if err := req.Validate(); err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-	ctx, cancel := context.WithTimeout(r.Context(), time.Duration(req.TimeLimitMs+2000)*time.Millisecond)
+	
+	ctx, cancel := context.WithTimeout(c.Request.Context(), time.Duration(req.TimeLimitMs+2000)*time.Millisecond)
 	defer cancel()
+	
 	res, err := s.mgr.Run(ctx, &req)
 	if err != nil {
 		logging.Logger.Error("run failed", zap.Error(err))
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
-	w.Header().Set("Content-Type", "application/json")
-	_ = json.NewEncoder(w).Encode(res)
+	
+	c.JSON(http.StatusOK, res)
+}
+
+// Start 启动服务器
+func (s *Server) Start(port int) error {
+	addr := ":" + strconv.Itoa(port)
+	logging.Logger.Info("Starting server", zap.String("addr", addr))
+	return s.engine.Run(addr)
+}
+
+// Engine 返回 Gin 引擎实例
+func (s *Server) Engine() *gin.Engine {
+	return s.engine
 }

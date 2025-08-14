@@ -38,9 +38,18 @@ type LanguageSettings struct {
 	Seccomp    SeccompLangConfig `yaml:"seccomp"`
 }
 
+// SecurityConfig holds security-related configurations
+type SecurityConfig struct {
+	EnableAuth bool `yaml:"enable_auth"`
+	// 可以添加更多安全配置项
+	// RateLimitPerMinute int    `yaml:"rate_limit_per_minute"`
+	// AllowedIPs         []string `yaml:"allowed_ips"`
+}
+
 // SandboxConfig holds all YAML-based application configurations
 type SandboxConfig struct {
 	Runtime   RuntimeConfig               `yaml:"runtime"`
+	Security  *SecurityConfig             `yaml:"security"`
 	Languages map[string]LanguageSettings `yaml:"languages"`
 }
 
@@ -58,6 +67,7 @@ func Init() error {
 		if errors.Is(err, fs.ErrNotExist) {
 			yamlConfig = &SandboxConfig{
 				Runtime:   RuntimeConfig{},
+				Security:  &SecurityConfig{EnableAuth: false},
 				Languages: map[string]LanguageSettings{},
 			}
 			return nil
@@ -83,6 +93,7 @@ func GetYAMLConfig() *SandboxConfig {
 	if yamlConfig == nil {
 		return &SandboxConfig{
 			Runtime:   RuntimeConfig{},
+			Security:  &SecurityConfig{EnableAuth: false},
 			Languages: map[string]LanguageSettings{},
 		}
 	}

@@ -1,104 +1,52 @@
+// Node.js 运行器 - 简化版本
+// 依赖容器安全隔离，重定向 console 输出
+
 const fs = require('fs');
 
-function run() {
-  return new Promise((resolve, reject) => {
-    // Try to get code from environment variable first
-    const codeFromEnv = process.env.SANDBOX_CODE;
-    let code = '';
-    
-    if (codeFromEnv) {
-      code = codeFromEnv;
-    } else {
-      // Fallback to reading from workspace (original behavior)
-      const codePath = '/workspace/main.js';
-      if (!fs.existsSync(codePath)) {
-        resolve({
-          stdout: '',
-          stderr: 'Code file not found: ' + codePath,
-          exit_code: 1,
-          artifacts: []
-        });
-        return;
-      }
-      
-      try {
-        code = fs.readFileSync(codePath, 'utf8');
-      } catch (readError) {
-        resolve({
-          stdout: '',
-          stderr: 'Failed to read code file: ' + readError.message,
-          exit_code: 1,
-          artifacts: []
-        });
-        return;
-      }
-    }
-    
-    // Capture stdout and stderr
-    let stdout = '';
-    let stderr = '';
-    
-    const originalConsoleLog = console.log;
-    const originalConsoleError = console.error;
-    
-    console.log = (...args) => {
-      stdout += args.join(' ') + '\n';
-    };
-    
-    console.error = (...args) => {
-      stderr += args.join(' ') + '\n';
-    };
-    
-    try {
-      // Execute the code directly using eval
-      eval(code);
-      
-      // Restore console functions
-      console.log = originalConsoleLog;
-      console.error = originalConsoleError;
-      
-      resolve({
-        stdout: stdout,
-        stderr: stderr,
-        exit_code: 0,
-        artifacts: []
-      });
-    } catch (error) {
-      // Restore console functions
-      console.log = originalConsoleLog;
-      console.error = originalConsoleError;
-      
-      resolve({
-        stdout: stdout,
-        stderr: stderr + error.toString() + '\n',
-        exit_code: 1,
-        artifacts: []
-      });
-    }
-  });
+const codePath = '/workspace/main.js';
+
+if (!fs.existsSync(codePath)) {
+  console.log(JSON.stringify({
+    stdout: '',
+    stderr: 'Code file not found: ' + codePath,
+    exit_code: 1,
+    artifacts: []
+  }));
+  process.exit(0);
 }
 
-(async () => {
-  try {
-    // Debug: Check environment variables
-    const codeFromEnv = process.env.SANDBOX_CODE;
-    const debugResult = {
-      stdout: '',
-      stderr: 'DEBUG: SANDBOX_CODE env var: ' + (codeFromEnv ? 'present (' + codeFromEnv.length + ' chars)' : 'not present'),
-      exit_code: 1,
-      artifacts: []
-    };
-    console.log(JSON.stringify(debugResult));
-    
-    const res = await run();
-    console.log(JSON.stringify(res));
-  } catch (error) {
-    const errorResult = {
-      stdout: '',
-      stderr: 'DEBUG: Runner error: ' + (error.message || error.toString()),
-      exit_code: 1,
-      artifacts: []
-    };
-    console.log(JSON.stringify(errorResult));
-  }
-})();
+// 捕获 console 输出
+const output = {
+  stdout: '',
+  stderr: ''
+};
+
+const originalLog = console.log;
+const originalError = console.error;
+
+console.log = (...args) => {
+  output.stdout += args.join(' ') + '\n';
+  originalLog(...args); // 同时输出到真实控制台
+};
+
+console.error = (...args) => {
+  output.stderr += args.join(' ') + '\n';
+  originalError(...args); // 同时输出到真实控制台
+};
+
+try {
+  require(codePath);
+  console.log(JSON.stringify({
+    stdout: output.stdout,
+    stderr: output.stderr,
+    exit_code: 0,
+    artifacts: []
+  }));
+} catch (error) {
+  console.log(JSON.stringify({
+    stdout: output.stdout,
+    stderr: output.stderr + error.message + '\n',
+    exit_code: 1,
+    artifacts: []
+  }));
+}
