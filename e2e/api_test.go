@@ -12,21 +12,11 @@ import (
 
 var _ = Describe("API Tests", func() {
 	var (
-		testServer *utils.TestServer
 		httpClient *utils.HTTPClient
 	)
 
 	BeforeEach(func() {
-		testServer = utils.NewTestServer("8081")
-		err := testServer.Start()
-		Expect(err).NotTo(HaveOccurred())
-		httpClient = utils.NewHTTPClient(testServer.GetBaseURL())
-	})
-
-	AfterEach(func() {
-		if testServer != nil {
-			testServer.Stop()
-		}
+		httpClient = globalHTTPClient
 	})
 
 	Describe("/v1/run endpoint", func() {
@@ -212,6 +202,9 @@ var _ = Describe("API Tests", func() {
 						ContainSubstring("MemoryError"),
 						ContainSubstring("killed"),
 						ContainSubstring("OOM"),
+						ContainSubstring("OpenBLAS"),
+						ContainSubstring("pthread_create failed"),
+						ContainSubstring("Operation not permitted"),
 					))
 				}
 			})

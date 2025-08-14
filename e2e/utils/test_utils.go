@@ -96,7 +96,7 @@ func (ts *TestServer) waitForServer(timeout time.Duration) error {
 		case <-ctx.Done():
 			return fmt.Errorf("server failed to start within %v", timeout)
 		case <-ticker.C:
-			resp, err := http.Get(ts.baseURL + "/v1/run")
+			resp, err := http.Get(ts.baseURL + "/health")
 			if err == nil {
 				resp.Body.Close()
 				return nil

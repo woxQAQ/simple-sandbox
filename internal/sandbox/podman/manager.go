@@ -79,12 +79,12 @@ func (m *Manager) Run(ctx context.Context, req *models.RunRequest) (*models.RunR
 		"--cap-drop=ALL",
 		"--security-opt=no-new-privileges",
 	}
-	
+
 	// Add seccomp only if not Node.js
 	if req.Language != models.LanguageNode {
 		args = append(args, fmt.Sprintf("--security-opt=seccomp=%s", seccompPath))
 	}
-	
+
 	args = append(args,
 		fmt.Sprintf("--memory=%dm", req.MemoryMB),
 		fmt.Sprintf("--cpu-shares=%d", req.CPUShares),
@@ -111,11 +111,18 @@ func (m *Manager) Run(ctx context.Context, req *models.RunRequest) (*models.RunR
 	duration := time.Since(start)
 
 	if ctxRun.Err() == context.DeadlineExceeded {
-		return nil, context.DeadlineExceeded
+		// 返回超时结果而不是错误，这样客户端可以处理超时情况
+		return &models.RunResult{
+			ExitCode:   143, // SIGTERM 信号
+			Stdout:     "",
+			Stderr:     "Timeout: execution exceeded the time limit",
+			Artifacts:  nil,
+			DurationMs: int(time.Since(start).Milliseconds()),
+		}, nil
 	}
 
 	// Parse JSON from stdout only, stderr may contain non-JSON logs
-	parsed, parseErr := common.ParseRunnerJSONFromBytes([]byte(stdout.String()))
+	parsed, parseErr := common.ParseRunnerJSONFromBytes(stdout.Bytes())
 	if parseErr != nil {
 		logging.Logger.Warn("failed to parse runner json, returning raw logs", zap.Error(parseErr))
 		return &models.RunResult{
@@ -142,7 +149,7 @@ func (m *Manager) ensureImage(ctx context.Context, image string, lang string) er
 	if err := cmd.Run(); err == nil {
 		return nil // Image exists
 	}
-	
+
 	// Debug: log the image being checked
 	fmt.Printf("DEBUG: Image '%s' not found locally, attempting to pull...\n", image)
 

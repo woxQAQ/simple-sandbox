@@ -13,21 +13,11 @@ import (
 
 var _ = Describe("Runtime Tests", func() {
 	var (
-		testServer *utils.TestServer
 		httpClient *utils.HTTPClient
 	)
 
 	BeforeEach(func() {
-		testServer = utils.NewTestServer("8082")
-		err := testServer.Start()
-		Expect(err).NotTo(HaveOccurred())
-		httpClient = utils.NewHTTPClient(testServer.GetBaseURL())
-	})
-
-	AfterEach(func() {
-		if testServer != nil {
-			testServer.Stop()
-		}
+		httpClient = globalHTTPClient
 	})
 
 	Describe("Python Runtime", func() {
