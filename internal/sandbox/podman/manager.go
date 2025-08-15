@@ -45,13 +45,13 @@ func (m *Manager) Run(ctx context.Context, req *models.RunRequest) (*models.RunR
 
 	// 生成唯一的容器名称以便追踪和清理
 	containerName := fmt.Sprintf("sandbox-%s-%d", req.Language, time.Now().UnixNano())
-	
+
 	// 确保容器在函数退出时被清理，即使发生错误
 	defer func() {
 		// 使用 context 来避免阻塞
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancel()
-		
+
 		cmd := exec.CommandContext(ctx, "podman", "rm", "-f", containerName)
 		cmd.Run() // 忽略错误
 	}()
@@ -69,18 +69,11 @@ func (m *Manager) Run(ctx context.Context, req *models.RunRequest) (*models.RunR
 		return nil, fmt.Errorf("failed to chmod temp dir: %w", err)
 	}
 
-	// Create seccomp profile file (temporarily disabled for Node.js)
-	var seccompProfile string
-	var seccompPath string
-	if req.Language == models.LanguageNode {
-		// Temporarily disable seccomp for Node.js
-		seccompProfile = ""
-	} else {
-		seccompProfile = seccomppkg.For(req.Language)
-		seccompPath = filepath.Join(tmpDir, "seccomp.json")
-		if err = os.WriteFile(seccompPath, []byte(seccompProfile), 0644); err != nil {
-			return nil, fmt.Errorf("failed to write seccomp profile: %w", err)
-		}
+	// Create seccomp profile file
+	seccompProfile := seccomppkg.For(req.Language)
+	seccompPath := filepath.Join(tmpDir, "seccomp.json")
+	if err = os.WriteFile(seccompPath, []byte(seccompProfile), 0644); err != nil {
+		return nil, fmt.Errorf("failed to write seccomp profile: %w", err)
 	}
 
 	// Build podman run command
@@ -92,14 +85,7 @@ func (m *Manager) Run(ctx context.Context, req *models.RunRequest) (*models.RunR
 		"--network=none",
 		"--cap-drop=ALL",
 		"--security-opt=no-new-privileges",
-	}
-
-	// Add seccomp only if not Node.js
-	if req.Language != models.LanguageNode {
-		args = append(args, fmt.Sprintf("--security-opt=seccomp=%s", seccompPath))
-	}
-
-	args = append(args,
+		fmt.Sprintf("--security-opt=seccomp=%s", seccompPath),
 		fmt.Sprintf("--memory=%dm", req.MemoryMB),
 		fmt.Sprintf("--cpu-shares=%d", req.CPUShares),
 		fmt.Sprintf("--pids-limit=%d", constants.DefaultPidsLimit),
@@ -110,7 +96,7 @@ func (m *Manager) Run(ctx context.Context, req *models.RunRequest) (*models.RunR
 		fmt.Sprintf("--workdir=%s", constants.WorkspaceDir),
 		fmt.Sprintf("--env=%s=%s", constants.SandboxEnvKey, constants.SandboxEnvVal),
 		image,
-	)
+	}
 
 	start := time.Now()
 	// Add reasonable buffer time for container startup and initialization
