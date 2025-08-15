@@ -13,6 +13,7 @@ type RuntimeConfig struct {
 	Backend        string `yaml:"backend"`
 	MaxConcurrency int    `yaml:"max_concurrency"`
 	MaxQueue       int    `yaml:"max_queue"`
+	AsyncWorkers   int    `yaml:"async_workers"`
 	ImageRegistry  string `yaml:"image_registry"`
 
 	// Registry authentication

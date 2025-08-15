@@ -3,63 +3,70 @@ package main
 import (
 	"context"
 	"flag"
-	"log"
 	"net/http"
-	"os"
 	"os/signal"
 	"syscall"
 	"time"
 
-	"github.com/woxqaq/simple-sandbox/internal/api"
 	"github.com/woxqaq/simple-sandbox/internal/config"
 	"github.com/woxqaq/simple-sandbox/internal/logging"
+	"github.com/woxqaq/simple-sandbox/internal/router"
 	"github.com/woxqaq/simple-sandbox/internal/sandbox"
+	"go.uber.org/zap"
 )
 
 func main() {
 	addr := flag.String("addr", ":8080", "HTTP listen address")
+	mode := flag.String("ginMode", "release", "Gin mode")
 	flag.Parse()
 
-	if err := logging.Init(); err != nil {
-		log.Fatalf("init logger: %v", err)
+	if err := logging.Init(*mode); err != nil {
+		panic(err)
 	}
 	defer logging.Sync()
+	logger := logging.Logger
 
 	if err := config.Init(); err != nil {
-		log.Fatalf("load config: %v", err)
+		logger.Fatal("load config", zap.Error(err))
 	}
 
 	mgr, err := sandbox.NewFromEnv()
 	if err != nil {
-		log.Fatalf("backend manager: %v", err)
+		logger.Fatal("backend manager", zap.Error(err))
 	}
 
-	srv := api.NewServer(mgr)
+	srv := router.NewServer(mgr, *mode)
 
-	httpSrv := &http.Server{
+	// 创建 HTTP 服务器
+	httpServer := &http.Server{
 		Addr:    *addr,
-		Handler: srv.Routes(),
+		Handler: srv.Engine(),
 	}
 
-	// start server
+	// 启动服务器
 	go func() {
-		log.Printf("listening on %s", *addr)
-		if err := httpSrv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-			log.Fatalf("server error: %v", err)
+
+		logger.Info("listening on", zap.String("addr", *addr))
+		if err := httpServer.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			logger.Fatal("server error", zap.Error(err))
 		}
 	}()
 
-	// graceful shutdown
-	stop := make(chan os.Signal, 1)
-	signal.Notify(stop, syscall.SIGINT, syscall.SIGTERM)
-	<-stop
-	log.Printf("shutting down...")
+	// 使用 signal.NotifyContext 实现优雅关闭
+	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
+	defer stop()
 
-	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+	// 等待信号
+	<-ctx.Done()
+	logger.Info("shutting down...")
+
+	// 创建关闭上下文，给现有请求 30 秒时间完成
+	shutdownCtx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
-	if err := httpSrv.Shutdown(ctx); err != nil {
-		log.Printf("graceful shutdown failed: %v", err)
-		_ = httpSrv.Close()
+
+	if err := httpServer.Shutdown(shutdownCtx); err != nil {
+		logger.Error("server shutdown error", zap.Error(err))
 	}
-	log.Printf("server stopped")
+
+	logger.Info("server stopped")
 }

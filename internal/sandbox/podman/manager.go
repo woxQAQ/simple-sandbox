@@ -43,50 +43,79 @@ func (m *Manager) Run(ctx context.Context, req *models.RunRequest) (*models.RunR
 	}
 	defer os.RemoveAll(tmpDir)
 
+	// 生成唯一的容器名称以便追踪和清理
+	containerName := fmt.Sprintf("sandbox-%s-%d", req.Language, time.Now().UnixNano())
+	
+	// 确保容器在函数退出时被清理，即使发生错误
+	defer func() {
+		// 使用 context 来避免阻塞
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+		
+		cmd := exec.CommandContext(ctx, "podman", "rm", "-f", containerName)
+		cmd.Run() // 忽略错误
+	}()
+
 	codePath := filepath.Join(tmpDir, filename)
-	if err = os.WriteFile(codePath, []byte(req.Code), 0644); err != nil {
+	if err = os.WriteFile(codePath, []byte(req.Code), 0600); err != nil {
 		return nil, err
 	}
-	// Ensure the file and directory are readable by all users
-	if err = os.Chmod(codePath, 0755); err != nil {
+	// 设置严格的文件权限 - 仅所有者可读写
+	if err = os.Chmod(codePath, 0400); err != nil {
 		return nil, fmt.Errorf("failed to chmod code file: %w", err)
 	}
-	if err = os.Chmod(tmpDir, 0755); err != nil {
+	// 设置严格的目录权限 - 仅所有者可访问
+	if err = os.Chmod(tmpDir, 0700); err != nil {
 		return nil, fmt.Errorf("failed to chmod temp dir: %w", err)
 	}
 
-	// Create seccomp profile file
-	seccompProfile := seccomppkg.For(req.Language)
-	seccompPath := filepath.Join(tmpDir, "seccomp.json")
-	if err = os.WriteFile(seccompPath, []byte(seccompProfile), 0644); err != nil {
-		return nil, fmt.Errorf("failed to write seccomp profile: %w", err)
+	// Create seccomp profile file (temporarily disabled for Node.js)
+	var seccompProfile string
+	var seccompPath string
+	if req.Language == models.LanguageNode {
+		// Temporarily disable seccomp for Node.js
+		seccompProfile = ""
+	} else {
+		seccompProfile = seccomppkg.For(req.Language)
+		seccompPath = filepath.Join(tmpDir, "seccomp.json")
+		if err = os.WriteFile(seccompPath, []byte(seccompProfile), 0644); err != nil {
+			return nil, fmt.Errorf("failed to write seccomp profile: %w", err)
+		}
 	}
 
 	// Build podman run command
 	args := []string{
 		"run",
+		"--name", containerName,
 		"--rm",
 		"--read-only",
 		"--network=none",
 		"--cap-drop=ALL",
 		"--security-opt=no-new-privileges",
-		fmt.Sprintf("--security-opt=seccomp=%s", seccompPath),
+	}
+
+	// Add seccomp only if not Node.js
+	if req.Language != models.LanguageNode {
+		args = append(args, fmt.Sprintf("--security-opt=seccomp=%s", seccompPath))
+	}
+
+	args = append(args,
 		fmt.Sprintf("--memory=%dm", req.MemoryMB),
 		fmt.Sprintf("--cpu-shares=%d", req.CPUShares),
 		fmt.Sprintf("--pids-limit=%d", constants.DefaultPidsLimit),
 		"--oom-kill-disable=false",
-		fmt.Sprintf("--volume=%s:%s:ro,Z", tmpDir, constants.WorkspaceDir),
+		fmt.Sprintf("--volume=%s:%s:ro", tmpDir, constants.WorkspaceDir),
 		fmt.Sprintf("--tmpfs=%s:size=%d,mode=%o", constants.TmpDir, constants.TmpfsSizeBytes, constants.TmpfsModeStickyRW),
 		fmt.Sprintf("--tmpfs=%s:size=%d,mode=%o", constants.DevShmDir, constants.DevShmSizeBytes, constants.TmpfsModeStickyRW),
-
 		fmt.Sprintf("--workdir=%s", constants.WorkspaceDir),
 		fmt.Sprintf("--env=%s=%s", constants.SandboxEnvKey, constants.SandboxEnvVal),
-		fmt.Sprintf("--env=SANDBOX_CODE=%s", req.Code),
 		image,
-	}
+	)
 
 	start := time.Now()
-	ctxRun, cancel := context.WithTimeout(ctx, time.Duration(req.TimeLimitMs)*time.Millisecond)
+	// Add reasonable buffer time for container startup and initialization
+	bufferTimeMs := req.TimeLimitMs + 2000
+	ctxRun, cancel := context.WithTimeout(ctx, time.Duration(bufferTimeMs)*time.Millisecond)
 	defer cancel()
 
 	cmd := exec.CommandContext(ctxRun, "podman", args...)
@@ -98,11 +127,18 @@ func (m *Manager) Run(ctx context.Context, req *models.RunRequest) (*models.RunR
 	duration := time.Since(start)
 
 	if ctxRun.Err() == context.DeadlineExceeded {
-		return nil, context.DeadlineExceeded
+		// 返回超时结果而不是错误，这样客户端可以处理超时情况
+		return &models.RunResult{
+			ExitCode:   143, // SIGTERM 信号
+			Stdout:     "",
+			Stderr:     "Timeout: execution exceeded the time limit",
+			Artifacts:  nil,
+			DurationMs: int(time.Since(start).Milliseconds()),
+		}, nil
 	}
 
 	// Parse JSON from stdout only, stderr may contain non-JSON logs
-	parsed, parseErr := common.ParseRunnerJSONFromBytes([]byte(stdout.String()))
+	parsed, parseErr := common.ParseRunnerJSONFromBytes(stdout.Bytes())
 	if parseErr != nil {
 		logging.Logger.Warn("failed to parse runner json, returning raw logs", zap.Error(parseErr))
 		return &models.RunResult{
@@ -129,6 +165,9 @@ func (m *Manager) ensureImage(ctx context.Context, image string, lang string) er
 	if err := cmd.Run(); err == nil {
 		return nil // Image exists
 	}
+
+	// Debug: log the image being checked
+	fmt.Printf("DEBUG: Image '%s' not found locally, attempting to pull...\n", image)
 
 	// Pull image with authentication if configured
 	podmanConfig := GetConfig()

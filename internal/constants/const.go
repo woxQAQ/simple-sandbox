@@ -30,7 +30,7 @@ const (
 
 // Docker runtime settings
 const (
-	DefaultPidsLimit  = 128
+	DefaultPidsLimit  = 512
 	TmpfsSizeBytes    = 64 * 1024 * 1024
 	DevShmSizeBytes   = 8 * 1024 * 1024
 	TmpfsModeStickyRW = 01777

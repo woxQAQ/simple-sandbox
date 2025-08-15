@@ -9,8 +9,16 @@ var (
 )
 
 // Init initializes a global production JSON logger.
-func Init() error {
-	cfg := zap.NewProductionConfig()
+func Init(mode string) error {
+	var cfg zap.Config
+	switch mode {
+	case "release":
+		cfg = zap.NewProductionConfig()
+	case "debug":
+		cfg = zap.NewDevelopmentConfig()
+	default:
+		cfg = zap.NewDevelopmentConfig()
+	}
 	cfg.Encoding = "json"
 	l, err := cfg.Build()
 	if err != nil {

@@ -2,11 +2,18 @@ package models
 
 import (
 	"errors"
+	"time"
 )
 
 const (
 	LanguagePython = "python"
 	LanguageNode   = "node"
+	
+	TaskStatusPending   = "pending"
+	TaskStatusRunning   = "running"
+	TaskStatusCompleted = "completed"
+	TaskStatusFailed    = "failed"
+	TaskStatusTimeout   = "timeout"
 )
 
 type RunRequest struct {
@@ -30,6 +37,37 @@ type RunResult struct {
 	Stderr     string     `json:"stderr"`
 	Artifacts  []Artifact `json:"artifacts,omitempty"`
 	DurationMs int        `json:"duration_ms"`
+}
+
+// Task represents an asynchronous execution task
+type Task struct {
+	ID          string     `json:"id"`
+	Status      string     `json:"status"`
+	Request     *RunRequest `json:"request"`
+	Result      *RunResult `json:"result,omitempty"`
+	Error       string     `json:"error,omitempty"`
+	CreatedAt   time.Time  `json:"created_at"`
+	StartedAt   *time.Time `json:"started_at,omitempty"`
+	CompletedAt *time.Time `json:"completed_at,omitempty"`
+}
+
+// TaskResponse is the immediate response when submitting a task
+type TaskResponse struct {
+	TaskID string `json:"task_id"`
+	Status string `json:"status"`
+}
+
+// TaskStatusRequest is the request to poll task status
+type TaskStatusRequest struct {
+	TaskID string `json:"task_id"`
+}
+
+// TaskStatusResponse is the response for task status polling
+type TaskStatusResponse struct {
+	Task      *Task     `json:"task"`
+	Status    string    `json:"status"`
+	Progress  float64   `json:"progress,omitempty"`
+	Message   string    `json:"message,omitempty"`
 }
 
 func (r *RunRequest) Validate() error {

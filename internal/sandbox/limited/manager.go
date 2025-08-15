@@ -38,8 +38,11 @@ func NewQueueingManager(inner sandbox.SandboxManager, maxConcurrent int, maxQueu
 
 func (q *QueueingManager) Run(ctx context.Context, req *models.RunRequest) (*models.RunResult, error) {
 	resC := make(chan result, 1)
+	// Create a new context without timeout for the inner manager
+	// This allows the podman manager to handle timeouts properly and return RunResult instead of errors
+	innerCtx := context.Background()
 	// Copy request to avoid data races if caller mutates after enqueue
-	j := job{ctx: ctx, req: *req, resC: resC}
+	j := job{ctx: innerCtx, req: *req, resC: resC}
 	// Block when the queue is full; respect ctx cancellation/timeout
 	select {
 	case q.jobs <- j:
@@ -50,8 +53,8 @@ func (q *QueueingManager) Run(ctx context.Context, req *models.RunRequest) (*mod
 	select {
 	case out := <-resC:
 		return &out.res, out.err
-	case <-ctx.Done():
-		return nil, ctx.Err()
+	// Don't check ctx.Done() here - let the inner manager handle timeouts properly
+	// This allows the podman manager to return RunResult for timeouts instead of errors
 	}
 }
 

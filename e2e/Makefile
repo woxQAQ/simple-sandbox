@@ -6,6 +6,7 @@
 GINKGO_FLAGS := --randomize-all --race
 BUILD_DIR := ../tmp
 SERVER_BIN := $(BUILD_DIR)/sandboxd
+CONFIG_FILE := testdata/test_config.yaml
 
 # =============================================================================
 # Help and Setup
@@ -42,16 +43,16 @@ build:
 # =============================================================================
 
 test: build
-	ginkgo run $(GINKGO_FLAGS)
+	SANDBOX_CONFIG=$(CONFIG_FILE) ginkgo run $(GINKGO_FLAGS)
 
 test-verbose: build
-	ginkgo run $(GINKGO_FLAGS) --v
+	SANDBOX_CONFIG=$(CONFIG_FILE) ginkgo run $(GINKGO_FLAGS) --v
 
 test-focus: build
-	ginkgo run $(GINKGO_FLAGS) --focus="$(FOCUS)"
+	SANDBOX_CONFIG=$(CONFIG_FILE) ginkgo run $(GINKGO_FLAGS) --focus="$(FOCUS)"
 
 coverage: build
-	ginkgo run $(GINKGO_FLAGS) --cover --coverprofile=coverage.out
+	SANDBOX_CONFIG=$(CONFIG_FILE) ginkgo run $(GINKGO_FLAGS) --cover --coverprofile=coverage.out
 	go tool cover -html=coverage.out -o coverage.html
 	@echo "Coverage report: coverage.html"
 
