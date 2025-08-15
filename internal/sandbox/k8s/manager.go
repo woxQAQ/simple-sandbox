@@ -10,6 +10,7 @@ import (
 	"time"
 
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/kubernetes"
@@ -19,6 +20,7 @@ import (
 	"github.com/woxqaq/simple-sandbox/internal/constants"
 	"github.com/woxqaq/simple-sandbox/internal/models"
 	"github.com/woxqaq/simple-sandbox/internal/sandbox/common"
+	seccomppkg "github.com/woxqaq/simple-sandbox/internal/security/seccomp"
 )
 
 type Manager struct {
@@ -60,6 +62,26 @@ func (m *Manager) Run(
 	suffix := randHex(6)
 	cmName := constants.K8sConfigMapNamePref + suffix
 	podName := constants.K8sPodNamePref + suffix
+	seccompProfileName := constants.K8sSeccompProfilePref + suffix
+
+	// Create seccomp profile config map
+	seccompProfile := seccomppkg.For(req.Language)
+	seccompCM := &corev1.ConfigMap{
+		ObjectMeta: metav1.ObjectMeta{Name: seccompProfileName, Namespace: ns},
+		Data:       map[string]string{"seccomp.json": seccompProfile},
+	}
+	if _, err := m.client.
+		CoreV1().
+		ConfigMaps(ns).
+		Create(ctx, seccompCM, metav1.CreateOptions{}); err != nil {
+		return nil, fmt.Errorf("create seccomp configmap: %w", err)
+	}
+	defer func() {
+		_ = m.client.
+			CoreV1().
+			ConfigMaps(ns).
+			Delete(context.Background(), seccompProfileName, metav1.DeleteOptions{})
+	}()
 
 	cm := &corev1.ConfigMap{
 		ObjectMeta: metav1.ObjectMeta{Name: cmName, Namespace: ns},
@@ -78,7 +100,7 @@ func (m *Manager) Run(
 			Delete(context.Background(), cmName, metav1.DeleteOptions{})
 	}()
 
-	// Pod with default securityContext; tmpfs-like /tmp via emptyDir memory
+	// Pod with security context and seccomp profile; tmpfs-like /tmp via emptyDir memory
 	pod := &corev1.Pod{
 		ObjectMeta: metav1.ObjectMeta{Name: podName, Namespace: ns},
 		Spec: corev1.PodSpec{
@@ -99,6 +121,32 @@ func (m *Manager) Run(
 					{Name: constants.K8sVolumeCode, MountPath: constants.WorkspaceDir, ReadOnly: true},
 					{Name: constants.K8sVolumeTmp, MountPath: constants.TmpDir},
 					{Name: constants.K8sVolumeDShm, MountPath: constants.DevShmDir},
+					{Name: constants.K8sVolumeSeccomp, MountPath: constants.SeccompProfilePath, ReadOnly: true},
+				},
+				SecurityContext: &corev1.SecurityContext{
+					RunAsUser:    func(i int64) *int64 { return &i }(1000),
+					RunAsGroup:   func(i int64) *int64 { return &i }(1000),
+					ReadOnlyRootFilesystem: func(b bool) *bool { return &b }(true),
+					Capabilities: &corev1.Capabilities{
+						Drop: []corev1.Capability{"ALL"},
+					},
+					AllowPrivilegeEscalation: func(b bool) *bool { return &b }(false),
+					SeccompProfile: &corev1.SeccompProfile{
+						Type: corev1.SeccompProfileTypeLocalhost,
+						LocalhostProfile: func(s string) *string { return &s }(constants.SeccompProfilePath),
+					},
+				},
+				Resources: corev1.ResourceRequirements{
+					Limits: corev1.ResourceList{
+						"memory": func() resource.Quantity {
+							q, _ := resource.ParseQuantity(fmt.Sprintf("%dMi", req.MemoryMB))
+							return q
+						}(),
+						"cpu": func() resource.Quantity {
+							q, _ := resource.ParseQuantity(fmt.Sprintf("%dm", req.CPUShares))
+							return q
+						}(),
+					},
 				},
 			}},
 			Volumes: []corev1.Volume{
@@ -120,6 +168,17 @@ func (m *Manager) Run(
 					Name: constants.K8sVolumeDShm,
 					VolumeSource: corev1.VolumeSource{
 						EmptyDir: &corev1.EmptyDirVolumeSource{Medium: corev1.StorageMediumMemory},
+					},
+				},
+				{
+					Name: constants.K8sVolumeSeccomp,
+					VolumeSource: corev1.VolumeSource{
+						ConfigMap: &corev1.ConfigMapVolumeSource{
+							LocalObjectReference: corev1.LocalObjectReference{Name: seccompProfileName},
+							Items: []corev1.KeyToPath{
+								{Key: "seccomp.json", Path: "seccomp.json"},
+							},
+						},
 					},
 				},
 			},
