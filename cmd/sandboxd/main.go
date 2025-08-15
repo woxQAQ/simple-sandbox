@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"flag"
-	"log"
 	"net/http"
 	"os/signal"
 	"syscall"
@@ -13,27 +12,30 @@ import (
 	"github.com/woxqaq/simple-sandbox/internal/logging"
 	"github.com/woxqaq/simple-sandbox/internal/router"
 	"github.com/woxqaq/simple-sandbox/internal/sandbox"
+	"go.uber.org/zap"
 )
 
 func main() {
 	addr := flag.String("addr", ":8080", "HTTP listen address")
+	mode := flag.String("ginMode", "release", "Gin mode")
 	flag.Parse()
 
-	if err := logging.Init(); err != nil {
-		log.Fatalf("init logger: %v", err)
+	if err := logging.Init(*mode); err != nil {
+		panic(err)
 	}
 	defer logging.Sync()
+	logger := logging.Logger
 
 	if err := config.Init(); err != nil {
-		log.Fatalf("load config: %v", err)
+		logger.Fatal("load config", zap.Error(err))
 	}
 
 	mgr, err := sandbox.NewFromEnv()
 	if err != nil {
-		log.Fatalf("backend manager: %v", err)
+		logger.Fatal("backend manager", zap.Error(err))
 	}
 
-	srv := router.NewServer(mgr)
+	srv := router.NewServer(mgr, *mode)
 
 	// 创建 HTTP 服务器
 	httpServer := &http.Server{
@@ -43,9 +45,10 @@ func main() {
 
 	// 启动服务器
 	go func() {
-		log.Printf("listening on %s", *addr)
+
+		logger.Info("listening on", zap.String("addr", *addr))
 		if err := httpServer.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-			log.Fatalf("server error: %v", err)
+			logger.Fatal("server error", zap.Error(err))
 		}
 	}()
 
@@ -55,15 +58,15 @@ func main() {
 
 	// 等待信号
 	<-ctx.Done()
-	log.Printf("shutting down...")
+	logger.Info("shutting down...")
 
 	// 创建关闭上下文，给现有请求 30 秒时间完成
 	shutdownCtx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
 	if err := httpServer.Shutdown(shutdownCtx); err != nil {
-		log.Printf("server shutdown error: %v", err)
+		logger.Error("server shutdown error", zap.Error(err))
 	}
 
-	log.Printf("server stopped")
+	logger.Info("server stopped")
 }

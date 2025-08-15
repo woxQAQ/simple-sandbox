@@ -14,14 +14,14 @@ type Router struct {
 	cfg     *config.SandboxConfig
 }
 
-func NewServer(mgr sandbox.SandboxManager) *Router {
+func NewServer(mgr sandbox.SandboxManager, mode string) *Router {
 	// wrap with queue/limit by default
 	yamlCfg := config.GetYAMLConfig()
 
 	handler := newHandler(yamlCfg, mgr)
 
 	// 创建 Gin 引擎
-	gin.SetMode(gin.ReleaseMode)
+	gin.SetMode(mode)
 	engine := gin.New()
 
 	// 添加中间件
