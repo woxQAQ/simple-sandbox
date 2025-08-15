@@ -44,7 +44,7 @@ func (ts *TestServer) Start() error {
 	// 启动服务器
 	ts.cmd = exec.Command("tmp/sandboxd", "-addr", ":"+ts.port)
 	ts.cmd.Dir = filepath.Join("..") // 从 e2e 目录到项目根目录
-	ts.cmd.Env = append(os.Environ(), "SANDBOX_CONFIG=e2e/testdata/test_config.yaml")
+	ts.cmd.Env = append(os.Environ(), "SANDBOX_CONFIG=./e2e/testdata/test_config.yaml")
 
 	if err := ts.cmd.Start(); err != nil {
 		return fmt.Errorf("failed to start server: %w", err)
@@ -74,7 +74,7 @@ func (ts *TestServer) Stop() error {
 	select {
 	case err := <-done:
 		return err
-	case <-time.After(10 * time.Second):
+	case <-time.After(15 * time.Second):
 		// 强制杀死进程
 		if err := ts.cmd.Process.Kill(); err != nil {
 			return fmt.Errorf("failed to kill process: %w", err)
@@ -121,7 +121,7 @@ func NewHTTPClient(baseURL string) *HTTPClient {
 	return &HTTPClient{
 		baseURL: baseURL,
 		client: &http.Client{
-			Timeout: 30 * time.Second,
+			Timeout: 60 * time.Second, // 增加超时时间以适应长时间运行的测试
 		},
 	}
 }

@@ -6,7 +6,7 @@ RUN adduser -D -u 65532 -s /sbin/nologin sandbox && \
     mkdir -p /runner /workspace /tmp && \
     chown -R sandbox:sandbox /runner /workspace /tmp
 
-COPY runner.js /runner/runner.js
+COPY docker/runtimes/node/runner.js /runner/runner.js
 
 USER sandbox
 WORKDIR /workspace

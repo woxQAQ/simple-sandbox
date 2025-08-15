@@ -222,7 +222,7 @@ var _ = Describe("API Tests", func() {
 				duration := time.Since(start)
 
 				Expect(err).NotTo(HaveOccurred())
-				Expect(duration).To(BeNumerically("<", 3*time.Second))
+				Expect(duration).To(BeNumerically("<", 4*time.Second))
 				Expect(result.ExitCode).NotTo(Equal(0))
 			})
 		})

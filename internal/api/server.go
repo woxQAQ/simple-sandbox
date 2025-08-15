@@ -1,9 +1,7 @@
 package api
 
 import (
-	"context"
 	"net/http"
-	"strconv"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -116,24 +114,19 @@ func (s *Server) handleRun(c *gin.Context) {
 		return
 	}
 	
-	ctx, cancel := context.WithTimeout(c.Request.Context(), time.Duration(req.TimeLimitMs+2000)*time.Millisecond)
-	defer cancel()
+	// Don't set timeout at API server level - let the podman manager handle timeouts
+	// This ensures consistent timeout behavior and allows the manager to return proper RunResult for timeouts
+	ctx := c.Request.Context()
 	
+	logging.Logger.Info("starting run", zap.Int("time_limit_ms", req.TimeLimitMs))
 	res, err := s.mgr.Run(ctx, &req)
 	if err != nil {
-		logging.Logger.Error("run failed", zap.Error(err))
+		logging.Logger.Error("run failed", zap.Error(err), zap.String("error_type", "context_error"))
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 	
 	c.JSON(http.StatusOK, res)
-}
-
-// Start 启动服务器
-func (s *Server) Start(port int) error {
-	addr := ":" + strconv.Itoa(port)
-	logging.Logger.Info("Starting server", zap.String("addr", addr))
-	return s.engine.Run(addr)
 }
 
 // Engine 返回 Gin 引擎实例

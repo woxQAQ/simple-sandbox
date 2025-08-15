@@ -43,6 +43,19 @@ func (m *Manager) Run(ctx context.Context, req *models.RunRequest) (*models.RunR
 	}
 	defer os.RemoveAll(tmpDir)
 
+	// 生成唯一的容器名称以便追踪和清理
+	containerName := fmt.Sprintf("sandbox-%s-%d", req.Language, time.Now().UnixNano())
+	
+	// 确保容器在函数退出时被清理，即使发生错误
+	defer func() {
+		// 使用 context 来避免阻塞
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+		
+		cmd := exec.CommandContext(ctx, "podman", "rm", "-f", containerName)
+		cmd.Run() // 忽略错误
+	}()
+
 	codePath := filepath.Join(tmpDir, filename)
 	if err = os.WriteFile(codePath, []byte(req.Code), 0600); err != nil {
 		return nil, err
@@ -73,6 +86,7 @@ func (m *Manager) Run(ctx context.Context, req *models.RunRequest) (*models.RunR
 	// Build podman run command
 	args := []string{
 		"run",
+		"--name", containerName,
 		"--rm",
 		"--read-only",
 		"--network=none",
@@ -90,7 +104,7 @@ func (m *Manager) Run(ctx context.Context, req *models.RunRequest) (*models.RunR
 		fmt.Sprintf("--cpu-shares=%d", req.CPUShares),
 		fmt.Sprintf("--pids-limit=%d", constants.DefaultPidsLimit),
 		"--oom-kill-disable=false",
-		fmt.Sprintf("--volume=%s:%s:Z", tmpDir, constants.WorkspaceDir),
+		fmt.Sprintf("--volume=%s:%s:ro", tmpDir, constants.WorkspaceDir),
 		fmt.Sprintf("--tmpfs=%s:size=%d,mode=%o", constants.TmpDir, constants.TmpfsSizeBytes, constants.TmpfsModeStickyRW),
 		fmt.Sprintf("--tmpfs=%s:size=%d,mode=%o", constants.DevShmDir, constants.DevShmSizeBytes, constants.TmpfsModeStickyRW),
 		fmt.Sprintf("--workdir=%s", constants.WorkspaceDir),
@@ -99,7 +113,9 @@ func (m *Manager) Run(ctx context.Context, req *models.RunRequest) (*models.RunR
 	)
 
 	start := time.Now()
-	ctxRun, cancel := context.WithTimeout(ctx, time.Duration(req.TimeLimitMs)*time.Millisecond)
+	// Add reasonable buffer time for container startup and initialization
+	bufferTimeMs := req.TimeLimitMs + 2000
+	ctxRun, cancel := context.WithTimeout(ctx, time.Duration(bufferTimeMs)*time.Millisecond)
 	defer cancel()
 
 	cmd := exec.CommandContext(ctxRun, "podman", args...)
