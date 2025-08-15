@@ -1,0 +1,41 @@
+# E2E Test Configuration
+# This configuration is optimized for testing purposes
+
+# Runtime configuration
+runtime:
+  # Container backend: docker (k8s requires cluster setup)
+  backend: "podman"
+  
+  # Reduced concurrency for testing
+  max_concurrency: 2
+  max_queue: 8
+  
+  # Container registry settings (empty for local images)
+  image_registry: ""
+  
+  # Registry authentication (empty for public images)
+  registry_username: ""
+  registry_password: ""
+  registry_auth: ""
+  registry_identity_token: ""
+  
+  # Kubernetes settings (not used in docker backend)
+  k8s_image_pull_secret: ""
+
+# Language-specific configurations
+languages:
+  python:
+    repository: "localhost/sandbox-python"
+    tag: "latest"
+    registry: ""
+    seccomp:
+      k8s_mode: "runtimeDefault"
+      k8s_localhost_ref: ""
+  
+  node:
+    repository: "localhost/sandbox-node"
+    tag: "latest"
+    registry: ""
+    seccomp:
+      k8s_mode: "runtimeDefault"
+      k8s_localhost_ref: ""

@@ -1,0 +1,13 @@
+{
+  "defaultAction": "SCMP_ACT_ALLOW",
+  "archMap": [
+    { "architecture": "SCMP_ARCH_X86_64", "subArchitectures": ["SCMP_ARCH_X86", "SCMP_ARCH_X32"] },
+    { "architecture": "SCMP_ARCH_AARCH64", "subArchitectures": ["SCMP_ARCH_ARM"] }
+  ],
+  "syscalls": [
+    {"names": ["unshare", "kexec_load", "keyctl", "add_key", "request_key", "mount", "umount2", "pivot_root", "swapon", "swapoff", "bpf", "ptrace"], "action": "SCMP_ACT_ERRNO"},
+    {"names": ["chmod", "fchmod", "fchmodat", "chown", "fchown", "fchownat", "setuid", "setgid", "setns"], "action": "SCMP_ACT_ERRNO"},
+    {"names": ["fork", "vfork", "execveat"], "action": "SCMP_ACT_ERRNO"},
+    {"names": ["socket", "connect", "accept", "bind", "listen", "getsockname", "getpeername", "setsockopt", "getsockopt", "shutdown", "recvfrom", "sendto", "recvmsg", "sendmsg"], "action": "SCMP_ACT_ERRNO"}
+  ]
+}

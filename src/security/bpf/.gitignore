@@ -1,3 +1,0 @@
-seccomp_injector.o
-syscalls_generated.h
-seccomp_injector*.o

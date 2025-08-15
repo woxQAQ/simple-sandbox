@@ -59,6 +59,7 @@ yarn-error.log*
 # Documentation
 README.md
 CLAUDE.md
+.trae/*
 docs/
 
 # Temporary files

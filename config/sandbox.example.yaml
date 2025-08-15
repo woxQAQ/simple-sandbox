@@ -1,0 +1,41 @@
+# Simple Sandbox Configuration
+# This file contains all runtime and language-specific configurations
+
+# Runtime configuration (formerly environment variables)
+runtime:
+  # Container backend: docker, k8s
+  backend: "docker"
+  
+  # Concurrency settings
+  max_concurrency: 4
+  max_queue: 32
+  
+  # Container registry settings
+  image_registry: "docker.io"
+  
+  # Registry authentication (optional)
+  registry_username: ""
+  registry_password: ""
+  registry_auth: ""
+  registry_identity_token: ""
+  
+  # Kubernetes settings
+  k8s_image_pull_secret: ""
+
+# Language-specific configurations
+languages:
+  python:
+    repository: "woxqaq/sandbox-python"
+    tag: "latest"
+    registry: ""
+    seccomp:
+      k8s_mode: "runtimeDefault"
+      k8s_localhost_ref: ""
+  
+  node:
+    repository: "woxqaq/sandbox-node"
+    tag: "latest"
+    registry: ""
+    seccomp:
+      k8s_mode: "runtimeDefault"
+      k8s_localhost_ref: ""

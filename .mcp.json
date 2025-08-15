@@ -1,24 +1,15 @@
 {
   "mcpServers": {
-    "memory": {
-      "command": "docker",
+    "sequential-thinking": {
+      "command": "npx",
       "args": [
-        "run",
-        "-i",
-        "-v",
-        "claude-memory:/app/dict",
-        "--rm",
-        "mcp/memory"
+        "-y",
+        "@modelcontextprotocol/server-sequential-thinking"
       ]
     },
-    "think": {
-      "command": "docker",
-      "args": [
-        "run",
-        "-i",
-        "--rm",
-        "mcp/sequentialthinking"
-      ]
+    "context7": {
+      "command": "npx",
+      "args": ["-y", "@upstash/context7-mcp"]
     }
   }
 }
