@@ -9,9 +9,9 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/woxqaq/simple-sandbox/internal/api"
 	"github.com/woxqaq/simple-sandbox/internal/config"
 	"github.com/woxqaq/simple-sandbox/internal/logging"
+	"github.com/woxqaq/simple-sandbox/internal/router"
 	"github.com/woxqaq/simple-sandbox/internal/sandbox"
 )
 
@@ -33,7 +33,7 @@ func main() {
 		log.Fatalf("backend manager: %v", err)
 	}
 
-	srv := api.NewServer(mgr)
+	srv := router.NewServer(mgr)
 
 	// 创建 HTTP 服务器
 	httpServer := &http.Server{

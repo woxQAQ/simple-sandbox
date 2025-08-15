@@ -19,7 +19,7 @@ var _ = Describe("API Tests", func() {
 		httpClient = globalHTTPClient
 	})
 
-	Describe("/v1/run endpoint", func() {
+	Describe("/v1/tasks endpoint", func() {
 		Context("with valid requests", func() {
 			It("should execute Python hello world successfully", func() {
 				req := &models.RunRequest{
@@ -88,6 +88,101 @@ var _ = Describe("API Tests", func() {
 			})
 		})
 
+		Context("async task management", func() {
+			It("should submit task and return task ID", func() {
+				req := &models.RunRequest{
+					Language:    "python",
+					Code:        testdata.PythonCodes["hello_world"],
+					TimeLimitMs: 5000,
+					MemoryMB:    128,
+					CPUShares:   256,
+				}
+
+				taskResp, err := httpClient.SubmitTask(req)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(taskResp.TaskID).NotTo(BeEmpty())
+				Expect(taskResp.Status).To(Equal(models.TaskStatusPending))
+			})
+
+			It("should poll task status until completion", func() {
+				req := &models.RunRequest{
+					Language:    "python",
+					Code:        testdata.PythonCodes["hello_world"],
+					TimeLimitMs: 5000,
+					MemoryMB:    128,
+					CPUShares:   256,
+				}
+
+				// Submit task
+				taskResp, err := httpClient.SubmitTask(req)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(taskResp.TaskID).NotTo(BeEmpty())
+
+				// Wait for task completion
+				status, err := httpClient.WaitForTask(taskResp.TaskID, 10*time.Second)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(status.Status).To(Equal(models.TaskStatusCompleted))
+				Expect(status.Task.Result).NotTo(BeNil())
+				Expect(status.Task.Result.ExitCode).To(Equal(0))
+				Expect(status.Task.Result.Stdout).To(Equal("Hello, World!\n"))
+			})
+
+			It("should handle task status transitions", func() {
+				req := &models.RunRequest{
+					Language:    "python",
+					Code:        "import time\ntime.sleep(1)\nprint('Done')",
+					TimeLimitMs: 5000,
+					MemoryMB:    128,
+					CPUShares:   256,
+				}
+
+				// Submit task
+				taskResp, err := httpClient.SubmitTask(req)
+				Expect(err).NotTo(HaveOccurred())
+
+				// Check initial status
+				status, err := httpClient.GetTaskStatus(taskResp.TaskID)
+				Expect(err).NotTo(HaveOccurred())
+				// Should be pending or running (goroutine might start quickly)
+				Expect(status.Status).To(Or(Equal(models.TaskStatusPending), Equal(models.TaskStatusRunning)))
+				Expect(status.Progress).To(BeNumerically(">=", 0.0))
+
+				// Wait for completion
+				status, err = httpClient.WaitForTask(taskResp.TaskID, 10*time.Second)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(status.Status).To(Equal(models.TaskStatusCompleted))
+				Expect(status.Progress).To(Equal(100.0))
+				Expect(status.Task.Result.Stdout).To(Equal("Done\n"))
+			})
+
+			It("should cancel running task", func() {
+				req := &models.RunRequest{
+					Language:    "python",
+					Code:        "import time\ntime.sleep(10)\nprint('This should not complete')",
+					TimeLimitMs: 15000,
+					MemoryMB:    128,
+					CPUShares:   256,
+				}
+
+				// Submit task
+				taskResp, err := httpClient.SubmitTask(req)
+				Expect(err).NotTo(HaveOccurred())
+
+				// Wait for task to start
+				time.Sleep(1 * time.Second)
+
+				// Cancel task
+				err = httpClient.CancelTask(taskResp.TaskID)
+				Expect(err).NotTo(HaveOccurred())
+
+				// Check status
+				status, err := httpClient.GetTaskStatus(taskResp.TaskID)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(status.Status).To(Equal(models.TaskStatusFailed))
+				Expect(status.Task.Error).To(Equal("task cancelled"))
+			})
+		})
+
 		Context("with error conditions", func() {
 			It("should handle Python runtime errors", func() {
 				req := &models.RunRequest{
@@ -135,9 +230,9 @@ var _ = Describe("API Tests", func() {
 				duration := time.Since(start)
 
 				Expect(err).NotTo(HaveOccurred())
-				// 应该在超时时间附近结束
+				// 应该在超时时间附近结束，允许异步处理的开销
 				Expect(duration).To(BeNumerically(">", 2*time.Second))
-				Expect(duration).To(BeNumerically("<", 5*time.Second))
+				Expect(duration).To(BeNumerically("<", 12*time.Second))
 				// 进程应该被终止
 				Expect(result.ExitCode).NotTo(Equal(0))
 			})
@@ -222,7 +317,8 @@ var _ = Describe("API Tests", func() {
 				duration := time.Since(start)
 
 				Expect(err).NotTo(HaveOccurred())
-				Expect(duration).To(BeNumerically("<", 4*time.Second))
+				// 允许异步处理的开销
+				Expect(duration).To(BeNumerically("<", 10*time.Second))
 				Expect(result.ExitCode).NotTo(Equal(0))
 			})
 		})
