@@ -6,6 +6,11 @@ VERSION = latest
 BUILDX_PLATFORM ?= linux/amd64,linux/arm64
 BUILDX_ARGS ?= --sbom=false --provenance=false
 
+.PHONY: fmt
+fmt:
+	go vet ./...
+	go fmt ./...
+
 .PHONY: setup-builder clean-builder
 setup-builder:
 	@if ! docker buildx inspect multi-platform >/dev/null 2>&1; then \

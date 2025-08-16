@@ -124,15 +124,15 @@ func (m *Manager) Run(
 					{Name: constants.K8sVolumeSeccomp, MountPath: constants.SeccompProfilePath, ReadOnly: true},
 				},
 				SecurityContext: &corev1.SecurityContext{
-					RunAsUser:    func(i int64) *int64 { return &i }(1000),
-					RunAsGroup:   func(i int64) *int64 { return &i }(1000),
+					RunAsUser:              func(i int64) *int64 { return &i }(1000),
+					RunAsGroup:             func(i int64) *int64 { return &i }(1000),
 					ReadOnlyRootFilesystem: func(b bool) *bool { return &b }(true),
 					Capabilities: &corev1.Capabilities{
 						Drop: []corev1.Capability{"ALL"},
 					},
 					AllowPrivilegeEscalation: func(b bool) *bool { return &b }(false),
 					SeccompProfile: &corev1.SeccompProfile{
-						Type: corev1.SeccompProfileTypeLocalhost,
+						Type:             corev1.SeccompProfileTypeLocalhost,
 						LocalhostProfile: func(s string) *string { return &s }(constants.SeccompProfilePath),
 					},
 				},

@@ -40,10 +40,10 @@ func (s *TaskService) SubmitTask(req *models.RunRequest) (*models.Task, error) {
 	ctx, cancel := context.WithCancel(context.Background())
 
 	task := &models.Task{
-		ID:        taskID,
-		Status:    models.TaskStatusPending,
-		Request:   req,
-		CreatedAt: time.Now(),
+		ID:         taskID,
+		Status:     models.TaskStatusPending,
+		Request:    req,
+		CreatedAt:  time.Now(),
 		CancelFunc: cancel,
 	}
 

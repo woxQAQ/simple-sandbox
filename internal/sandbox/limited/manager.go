@@ -53,8 +53,8 @@ func (q *QueueingManager) Run(ctx context.Context, req *models.RunRequest) (*mod
 	select {
 	case out := <-resC:
 		return &out.res, out.err
-	// Don't check ctx.Done() here - let the inner manager handle timeouts properly
-	// This allows the podman manager to return RunResult for timeouts instead of errors
+		// Don't check ctx.Done() here - let the inner manager handle timeouts properly
+		// This allows the podman manager to return RunResult for timeouts instead of errors
 	}
 }
 

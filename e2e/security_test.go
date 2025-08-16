@@ -12,11 +12,22 @@ import (
 
 var _ = Describe("Security Tests", func() {
 	var (
+		testServer *utils.TestServer
 		httpClient *utils.HTTPClient
 	)
 
 	BeforeEach(func() {
-		httpClient = globalHTTPClient
+		// 为每个测试创建独立的服务器实例
+		var err error
+		testServer, httpClient, err = CreateParallelTestServer()
+		Expect(err).NotTo(HaveOccurred(), "Failed to create test server")
+	})
+
+	AfterEach(func() {
+		// 清理测试服务器
+		if testServer != nil {
+			_ = ReleaseParallelTestServer(testServer)
+		}
 	})
 
 	Describe("File System Isolation", func() {
@@ -44,48 +55,9 @@ var _ = Describe("Security Tests", func() {
 			})
 
 			It("should prevent access to dangerous host directories", func() {
-				code := `
-import os
-
-# 测试访问危险的系统目录
-dangerous_directories = [
-    '/root',
-    '/home',
-    '/var/log',
-    '/boot',
-    '/usr/local/bin'
-]
-
-# 测试访问容器内正常的系统目录
-normal_directories = [
-    '/etc',
-    '/proc',
-    '/sys',
-    '/dev',
-    '/tmp'
-]
-
-print("Testing dangerous directories:")
-for directory in dangerous_directories:
-    try:
-        files = os.listdir(directory)
-        print(f"WARNING: Can access dangerous {directory}: {len(files)} files")
-    except (PermissionError, FileNotFoundError) as e:
-        print(f"GOOD: {directory} properly restricted")
-    except Exception as e:
-        print(f"GOOD: Cannot access {directory}: {type(e).__name__}")
-
-print("\nTesting normal container directories:")
-for directory in normal_directories:
-    try:
-        files = os.listdir(directory)
-        print(f"INFO: Can access container {directory}: {len(files)} files")
-    except Exception as e:
-        print(f"INFO: Cannot access {directory}: {type(e).__name__}")
-`
 				req := &models.RunRequest{
 					Language:    "python",
-					Code:        code,
+					Code:        testdata.PythonCodes["dangerous_directory_access"],
 					TimeLimitMs: 5000,
 					MemoryMB:    128,
 				}
@@ -148,41 +120,9 @@ for directory in normal_directories:
 			})
 
 			It("should block various network protocols", func() {
-				code := `
-import socket
-import urllib.request
-
-# 测试不同的网络协议和端口
-test_cases = [
-    ('HTTP', 'http://httpbin.org/get'),
-    ('HTTPS', 'https://httpbin.org/get'),
-    ('DNS', 'google.com'),
-]
-
-for protocol, target in test_cases:
-    try:
-        if protocol in ['HTTP', 'HTTPS']:
-            response = urllib.request.urlopen(target, timeout=3)
-            print(f"WARNING: {protocol} access to {target} succeeded")
-        elif protocol == 'DNS':
-            socket.gethostbyname(target)
-            print(f"WARNING: DNS resolution for {target} succeeded")
-    except Exception as e:
-        print(f"GOOD: {protocol} access blocked: {type(e).__name__}")
-
-# 测试原始套接字
-try:
-    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    sock.settimeout(3)
-    sock.connect(('8.8.8.8', 53))
-    print("WARNING: Raw socket connection succeeded")
-    sock.close()
-except Exception as e:
-    print(f"GOOD: Raw socket blocked: {type(e).__name__}")
-`
 				req := &models.RunRequest{
 					Language:    "python",
-					Code:        code,
+					Code:        testdata.PythonCodes["network_protocol_test"],
 					TimeLimitMs: 10000,
 					MemoryMB:    128,
 				}
@@ -259,51 +199,9 @@ except Exception as e:
 			})
 
 			It("should prevent dangerous system operations", func() {
-				code := `
-import os
-import subprocess
-import sys
-
-# 测试各种危险操作
-dangerous_operations = [
-    # 尝试更改权限
-    ('chmod', ['chmod', '777', '/tmp']),
-    # 尝试挂载文件系统
-    ('mount', ['mount', '/dev/null', '/tmp']),
-    # 尝试创建设备文件
-    ('mknod', ['mknod', '/tmp/testdev', 'c', '1', '1']),
-    # 尝试修改系统时间
-    ('date', ['date', '-s', '2023-01-01']),
-    # 尝试加载内核模块
-    ('modprobe', ['modprobe', 'dummy']),
-]
-
-for name, cmd in dangerous_operations:
-    try:
-        result = subprocess.run(cmd, capture_output=True, text=True, timeout=3)
-        if result.returncode == 0:
-            print(f"WARNING: {name} succeeded")
-        else:
-            print(f"GOOD: {name} failed with code {result.returncode}")
-    except subprocess.TimeoutExpired:
-        print(f"GOOD: {name} timed out")
-    except FileNotFoundError:
-        print(f"GOOD: {name} command not found")
-    except Exception as e:
-        print(f"GOOD: {name} blocked: {type(e).__name__}")
-
-# 测试直接系统调用
-try:
-    os.setuid(0)  # 尝试切换到 root
-    print("WARNING: setuid(0) succeeded")
-except PermissionError:
-    print("GOOD: setuid(0) blocked")
-except Exception as e:
-    print(f"GOOD: setuid(0) failed: {type(e).__name__}")
-`
 				req := &models.RunRequest{
 					Language:    "python",
-					Code:        code,
+					Code:        testdata.PythonCodes["dangerous_system_operations"],
 					TimeLimitMs: 10000,
 					MemoryMB:    128,
 				}
@@ -357,33 +255,9 @@ except Exception as e:
 
 	Describe("User and Permission Isolation", func() {
 		It("should run as non-root user in Python", func() {
-			code := `
-import os
-import pwd
-
-uid = os.getuid()
-gid = os.getgid()
-
-print(f"Running as UID: {uid}")
-print(f"Running as GID: {gid}")
-
-try:
-    user_info = pwd.getpwuid(uid)
-    print(f"Username: {user_info.pw_name}")
-    print(f"Home directory: {user_info.pw_dir}")
-    print(f"Shell: {user_info.pw_shell}")
-except Exception as e:
-    print(f"Could not get user info: {e}")
-
-# 检查是否为 root
-if uid == 0:
-    print("WARNING: Running as root!")
-else:
-    print("GOOD: Running as non-root user")
-`
 			req := &models.RunRequest{
 				Language:    "python",
-				Code:        code,
+				Code:        testdata.PythonCodes["user_permission_test"],
 				TimeLimitMs: 5000,
 				MemoryMB:    128,
 			}
@@ -400,27 +274,9 @@ else:
 		})
 
 		It("should run as non-root user in Node.js", func() {
-			code := `
-const os = require('os');
-
-const uid = process.getuid();
-const gid = process.getgid();
-
-console.log('Running as UID: ' + uid);
-console.log('Running as GID: ' + gid);
-console.log('Username: ' + os.userInfo().username);
-console.log('Home directory: ' + os.userInfo().homedir);
-
-// 检查是否为 root
-if (uid === 0) {
-    console.log('WARNING: Running as root!');
-} else {
-    console.log('GOOD: Running as non-root user');
-}
-`
 			req := &models.RunRequest{
 				Language:    "node",
-				Code:        code,
+				Code:        testdata.NodeCodes["user_permission_test"],
 				TimeLimitMs: 5000,
 				MemoryMB:    128,
 			}
@@ -487,66 +343,9 @@ if (uid === 0) {
 
 	Describe("Container Security", func() {
 		It("should prevent dangerous container escape attempts", func() {
-			code := `
-import os
-import subprocess
-
-# 测试真正危险的容器逃逸尝试
-dangerous_attempts = [
-    # 尝试访问 Docker socket（真正危险）
-    ('docker_socket', ['ls', '-la', '/var/run/docker.sock']),
-    # 尝试挂载文件系统（危险）
-    ('mount_attempt', ['mount', '/dev/null', '/tmp/test']),
-    # 尝试访问主机网络命名空间（危险）
-    ('host_network', ['ip', 'netns', 'list']),
-]
-
-# 测试容器内正常的系统信息访问
-normal_info_access = [
-    # 容器内访问 proc 文件系统是正常的
-    ('proc_mounts', ['cat', '/proc/mounts']),
-    # 访问 cgroup 信息是正常的
-    ('cgroup', ['cat', '/proc/1/cgroup']),
-    # 访问内核信息是正常的
-    ('kernel_version', ['uname', '-a']),
-]
-
-print("Testing dangerous escape attempts:")
-for name, cmd in dangerous_attempts:
-    try:
-        result = subprocess.run(cmd, capture_output=True, text=True, timeout=3)
-        if result.returncode == 0 and result.stdout.strip():
-            print(f"WARNING: {name} accessible - potential security risk")
-        else:
-            print(f"GOOD: {name} properly blocked")
-    except Exception as e:
-        print(f"GOOD: {name} blocked: {type(e).__name__}")
-
-print("\nTesting normal container info access:")
-for name, cmd in normal_info_access:
-    try:
-        result = subprocess.run(cmd, capture_output=True, text=True, timeout=3)
-        if result.returncode == 0 and result.stdout.strip():
-            print(f"INFO: {name} accessible (normal): {len(result.stdout)} chars")
-        else:
-            print(f"INFO: {name} not accessible")
-    except Exception as e:
-        print(f"INFO: {name} access failed: {type(e).__name__}")
-
-# 检查是否在容器中
-try:
-    with open('/proc/1/cgroup', 'r') as f:
-        cgroup_content = f.read()
-        if 'docker' in cgroup_content or 'containerd' in cgroup_content:
-            print("INFO: Running in container (expected)")
-        else:
-            print("WARNING: May not be running in container")
-except Exception as e:
-    print(f"Cannot determine container status: {e}")
-`
 			req := &models.RunRequest{
 				Language:    "python",
-				Code:        code,
+				Code:        testdata.PythonCodes["container_escape_test"],
 				TimeLimitMs: 10000,
 				MemoryMB:    128,
 			}

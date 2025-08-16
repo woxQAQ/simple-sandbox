@@ -4,7 +4,7 @@ package constants
 const (
 	BackendDocker = "docker"
 	BackendPodman = "podman"
-	BackendK8s = "k8s"
+	BackendK8s    = "k8s"
 )
 
 // Images and registries
@@ -46,17 +46,17 @@ const (
 
 // K8s defaults
 const (
-	K8sDefaultNamespace    = "default"
-	K8sRunnerContainer     = "runner"
-	K8sVolumeCode          = "code"
-	K8sVolumeTmp           = "tmp"
-	K8sVolumeDShm          = "dshm"
-	K8sVolumeSeccomp       = "seccomp"
-	K8sPollIntervalMs      = 500
-	K8sConfigMapNamePref   = "sb-code-"
-	K8sPodNamePref         = "sb-pod-"
-	K8sSeccompProfilePref  = "sb-seccomp-"
-	SeccompProfilePath     = "/seccomp/seccomp.json"
+	K8sDefaultNamespace   = "default"
+	K8sRunnerContainer    = "runner"
+	K8sVolumeCode         = "code"
+	K8sVolumeTmp          = "tmp"
+	K8sVolumeDShm         = "dshm"
+	K8sVolumeSeccomp      = "seccomp"
+	K8sPollIntervalMs     = 500
+	K8sConfigMapNamePref  = "sb-code-"
+	K8sPodNamePref        = "sb-pod-"
+	K8sSeccompProfilePref = "sb-seccomp-"
+	SeccompProfilePath    = "/seccomp/seccomp.json"
 )
 
 //

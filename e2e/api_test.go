@@ -12,11 +12,22 @@ import (
 
 var _ = Describe("API Tests", func() {
 	var (
+		testServer *utils.TestServer
 		httpClient *utils.HTTPClient
 	)
 
 	BeforeEach(func() {
-		httpClient = globalHTTPClient
+		// 为每个测试创建独立的服务器实例
+		var err error
+		testServer, httpClient, err = CreateParallelTestServer()
+		Expect(err).NotTo(HaveOccurred(), "Failed to create test server")
+	})
+
+	AfterEach(func() {
+		// 清理测试服务器
+		if testServer != nil {
+			_ = ReleaseParallelTestServer(testServer)
+		}
 	})
 
 	Describe("/v1/tasks endpoint", func() {
@@ -130,7 +141,7 @@ var _ = Describe("API Tests", func() {
 			It("should handle task status transitions", func() {
 				req := &models.RunRequest{
 					Language:    "python",
-					Code:        "import time\ntime.sleep(1)\nprint('Done')",
+					Code:        testdata.PythonCodes["task_status_transition"],
 					TimeLimitMs: 5000,
 					MemoryMB:    128,
 					CPUShares:   256,
@@ -158,7 +169,7 @@ var _ = Describe("API Tests", func() {
 			It("should cancel running task", func() {
 				req := &models.RunRequest{
 					Language:    "python",
-					Code:        "import time\ntime.sleep(10)\nprint('This should not complete')",
+					Code:        testdata.PythonCodes["task_cancellation"],
 					TimeLimitMs: 15000,
 					MemoryMB:    128,
 					CPUShares:   256,

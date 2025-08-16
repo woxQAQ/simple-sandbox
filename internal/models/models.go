@@ -10,7 +10,7 @@ import (
 const (
 	LanguagePython = "python"
 	LanguageNode   = "node"
-	
+
 	TaskStatusPending   = "pending"
 	TaskStatusRunning   = "running"
 	TaskStatusCompleted = "completed"
@@ -43,16 +43,16 @@ type RunResult struct {
 
 // Task represents an asynchronous execution task
 type Task struct {
-	ID          string            `json:"id"`
-	Status      string            `json:"status"`
-	Request     *RunRequest       `json:"request"`
-	Result      *RunResult        `json:"result,omitempty"`
-	Error       string            `json:"error,omitempty"`
-	CreatedAt   time.Time         `json:"created_at"`
-	StartedAt   *time.Time        `json:"started_at,omitempty"`
-	CompletedAt *time.Time        `json:"completed_at,omitempty"`
+	ID          string             `json:"id"`
+	Status      string             `json:"status"`
+	Request     *RunRequest        `json:"request"`
+	Result      *RunResult         `json:"result,omitempty"`
+	Error       string             `json:"error,omitempty"`
+	CreatedAt   time.Time          `json:"created_at"`
+	StartedAt   *time.Time         `json:"started_at,omitempty"`
+	CompletedAt *time.Time         `json:"completed_at,omitempty"`
 	CancelFunc  context.CancelFunc `json:"-"` // 不序列化到 JSON
-	mu          sync.RWMutex      `json:"-"` // 保护 CancelFunc 的并发访问
+	mu          sync.RWMutex       `json:"-"` // 保护 CancelFunc 的并发访问
 }
 
 // GetCancelFunc 获取取消函数
@@ -89,10 +89,10 @@ type TaskStatusRequest struct {
 
 // TaskStatusResponse is the response for task status polling
 type TaskStatusResponse struct {
-	Task      *Task     `json:"task"`
-	Status    string    `json:"status"`
-	Progress  float64   `json:"progress,omitempty"`
-	Message   string    `json:"message,omitempty"`
+	Task     *Task   `json:"task"`
+	Status   string  `json:"status"`
+	Progress float64 `json:"progress,omitempty"`
+	Message  string  `json:"message,omitempty"`
 }
 
 func (r *RunRequest) Validate() error {

@@ -1,25 +1,21 @@
-# E2E Test Configuration
-# This configuration is optimized for testing purposes
+# E2E Test Configuration Example
+# Copy this file to test_config.yaml and modify as needed
 
 # Runtime configuration
 runtime:
-  # Container backend: docker (k8s requires cluster setup)
+  # Container backend: podman, docker, k8s
   backend: "podman"
   
-  # Reduced concurrency for testing
-  max_concurrency: 2
-  max_queue: 8
+  # Concurrency settings
+  max_concurrency: 4
+  max_queue: 16
   
   # Container registry settings (empty for local images)
   image_registry: ""
-  
-  # Registry authentication (empty for public images)
   registry_username: ""
   registry_password: ""
   registry_auth: ""
   registry_identity_token: ""
-  
-  # Kubernetes settings (not used in docker backend)
   k8s_image_pull_secret: ""
 
 # Language-specific configurations
