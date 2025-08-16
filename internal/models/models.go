@@ -1,7 +1,9 @@
 package models
 
 import (
+	"context"
 	"errors"
+	"sync"
 	"time"
 )
 
@@ -41,14 +43,37 @@ type RunResult struct {
 
 // Task represents an asynchronous execution task
 type Task struct {
-	ID          string     `json:"id"`
-	Status      string     `json:"status"`
-	Request     *RunRequest `json:"request"`
-	Result      *RunResult `json:"result,omitempty"`
-	Error       string     `json:"error,omitempty"`
-	CreatedAt   time.Time  `json:"created_at"`
-	StartedAt   *time.Time `json:"started_at,omitempty"`
-	CompletedAt *time.Time `json:"completed_at,omitempty"`
+	ID          string            `json:"id"`
+	Status      string            `json:"status"`
+	Request     *RunRequest       `json:"request"`
+	Result      *RunResult        `json:"result,omitempty"`
+	Error       string            `json:"error,omitempty"`
+	CreatedAt   time.Time         `json:"created_at"`
+	StartedAt   *time.Time        `json:"started_at,omitempty"`
+	CompletedAt *time.Time        `json:"completed_at,omitempty"`
+	CancelFunc  context.CancelFunc `json:"-"` // 不序列化到 JSON
+	mu          sync.RWMutex      `json:"-"` // 保护 CancelFunc 的并发访问
+}
+
+// GetCancelFunc 获取取消函数
+func (t *Task) GetCancelFunc() context.CancelFunc {
+	t.mu.RLock()
+	defer t.mu.RUnlock()
+	return t.CancelFunc
+}
+
+// SetCancelFunc 设置取消函数
+func (t *Task) SetCancelFunc(cancelFunc context.CancelFunc) {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	t.CancelFunc = cancelFunc
+}
+
+// ClearCancelFunc 清理取消函数
+func (t *Task) ClearCancelFunc() {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	t.CancelFunc = nil
 }
 
 // TaskResponse is the immediate response when submitting a task

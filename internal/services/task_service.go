@@ -36,11 +36,15 @@ func (s *TaskService) SubmitTask(req *models.RunRequest) (*models.Task, error) {
 
 	taskID := uuid.New().String()
 
+	// 创建可取消的 context
+	ctx, cancel := context.WithCancel(context.Background())
+
 	task := &models.Task{
 		ID:        taskID,
 		Status:    models.TaskStatusPending,
 		Request:   req,
 		CreatedAt: time.Now(),
+		CancelFunc: cancel,
 	}
 
 	// 存储任务
@@ -48,8 +52,8 @@ func (s *TaskService) SubmitTask(req *models.RunRequest) (*models.Task, error) {
 	s.tasks[taskID] = task
 	s.tasksMu.Unlock()
 
-	// 在后台执行任务
-	go s.executeTask(task)
+	// 在后台执行任务，传入可取消的 context
+	go s.executeTask(ctx, task)
 
 	return task, nil
 }
@@ -77,16 +81,6 @@ func (s *TaskService) CancelTask(taskID string) error {
 		return fmt.Errorf("task not found")
 	}
 
-	// 只有正在运行的任务才能取消
-	if task.Status == models.TaskStatusRunning {
-		task.Status = models.TaskStatusFailed
-		task.Error = "task cancelled"
-		now := time.Now()
-		task.CompletedAt = &now
-		logging.Logger.Info("task cancelled", zap.String("task_id", taskID))
-		return nil
-	}
-
 	// 如果任务已完成或失败，返回错误
 	if task.Status == models.TaskStatusCompleted {
 		return fmt.Errorf("task already completed")
@@ -95,12 +89,24 @@ func (s *TaskService) CancelTask(taskID string) error {
 		return fmt.Errorf("task already failed")
 	}
 
-	// 如果任务还在等待中，可以取消
+	// 调用取消函数来停止执行
+	if cancelFunc := task.GetCancelFunc(); cancelFunc != nil {
+		cancelFunc()
+		task.ClearCancelFunc()
+	}
+
+	// 更新任务状态
 	task.Status = models.TaskStatusFailed
 	task.Error = "task cancelled"
 	now := time.Now()
 	task.CompletedAt = &now
-	logging.Logger.Info("pending task cancelled", zap.String("task_id", taskID))
+
+	if task.Status == models.TaskStatusRunning {
+		logging.Logger.Info("running task cancelled", zap.String("task_id", taskID))
+	} else {
+		logging.Logger.Info("pending task cancelled", zap.String("task_id", taskID))
+	}
+
 	return nil
 }
 
@@ -139,7 +145,7 @@ func (s *TaskService) GetTaskStatus(taskID string) (*models.TaskStatusResponse, 
 }
 
 // executeTask 执行任务
-func (s *TaskService) executeTask(task *models.Task) {
+func (s *TaskService) executeTask(ctx context.Context, task *models.Task) {
 	// 更新任务状态为运行中
 	s.tasksMu.Lock()
 	task.Status = models.TaskStatusRunning
@@ -152,22 +158,37 @@ func (s *TaskService) executeTask(task *models.Task) {
 		zap.String("language", task.Request.Language),
 	)
 
-	// 执行任务
-	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(task.Request.TimeLimitMs)*time.Millisecond)
+	// 创建带超时的 context，继承父 context 的取消能力
+	ctxWithTimeout, cancel := context.WithTimeout(ctx, time.Duration(task.Request.TimeLimitMs)*time.Millisecond)
 	defer cancel()
 
-	result, err := s.mgr.Run(ctx, task.Request)
+	// 执行任务
+	result, err := s.mgr.Run(ctxWithTimeout, task.Request)
+
+	// 清理取消函数
+	task.ClearCancelFunc()
 
 	// 更新任务状态
 	s.tasksMu.Lock()
 	defer s.tasksMu.Unlock()
 
+	// 检查是否已被取消
+	if ctx.Err() == context.Canceled {
+		// 任务已被取消，不需要更新状态
+		return
+	}
+
 	completedAt := time.Now()
 	task.CompletedAt = &completedAt
 
 	if err != nil {
-		task.Status = models.TaskStatusFailed
-		task.Error = err.Error()
+		if ctxWithTimeout.Err() == context.DeadlineExceeded {
+			task.Status = models.TaskStatusTimeout
+			task.Error = "execution timeout"
+		} else {
+			task.Status = models.TaskStatusFailed
+			task.Error = err.Error()
+		}
 		logging.Logger.Error("async task execution failed",
 			zap.String("task_id", task.ID),
 			zap.Error(err),
