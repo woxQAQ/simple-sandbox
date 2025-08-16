@@ -9,7 +9,7 @@ SERVER_BIN := $(BUILD_DIR)/sandboxd
 CONFIG_FILE := testdata/test_config.yaml
 
 # Test configuration (overridable via environment variables)
-PARALLEL_PROCS ?= 4
+PARALLEL_PROCS ?= 8
 FOCUS ?= ""
 
 help:
@@ -33,28 +33,25 @@ help:
 
 deps:
 	go mod download
-	go install github.com/onsi/ginkgo/v2/ginkgo@latest
+	@if command -v ginkgo >/dev/null 2>&1; then \
+		echo "ginkgo is already installed"; \
+	else \
+		echo "Installing ginkgo..."; \
+		go install github.com/onsi/ginkgo/v2/ginkgo@latest; \
+	fi
 
-build:
+build: deps
 	mkdir -p $(BUILD_DIR)
 	cd .. && go build -o tmp/sandboxd ./cmd/sandboxd
 
-test: deps build
+test: build
 	SANDBOX_CONFIG=$(SANDBOX_CONFIG) ginkgo run $(GINKGO_FLAGS) --procs=$(PARALLEL_PROCS)
 
-test-verbose: deps build
+test-verbose: build
 	SANDBOX_CONFIG=$(SANDBOX_CONFIG) ginkgo run $(GINKGO_FLAGS) --procs=$(PARALLEL_PROCS) --v
 
-test-focus: deps build
+test-focus: build
 	SANDBOX_CONFIG=$(SANDBOX_CONFIG) ginkgo run $(GINKGO_FLAGS) --procs=$(PARALLEL_PROCS) --focus="$(FOCUS)"
-
-test-benchmark: build
-	@echo "=== Running Sequential Test Benchmark ==="
-	@cd .. && time SANDBOX_CONFIG=$(SANDBOX_CONFIG) ginkgo run $(GINKGO_FLAGS) --procs=1 e2e
-	@echo "=== Running Parallel Test Benchmark (4 procs) ==="
-	@cd .. && time SANDBOX_CONFIG=$(SANDBOX_CONFIG) ginkgo run --procs=4 $(GINKGO_FLAGS) e2e
-	@echo "=== Running Parallel Test Benchmark (8 procs) ==="
-	@cd .. && time SANDBOX_CONFIG=$(SANDBOX_CONFIG) ginkgo run --procs=8 $(GINKGO_FLAGS) e2e
 
 coverage: deps build
 	SANDBOX_CONFIG=$(SANDBOX_CONFIG) ginkgo run $(GINKGO_FLAGS) --procs=$(PARALLEL_PROCS) --cover --coverprofile=coverage.out
